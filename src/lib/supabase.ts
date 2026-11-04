@@ -108,12 +108,26 @@ export function getPlayerId(): string {
   if (typeof localStorage === 'undefined') return '';
   return localStorage.getItem('puppet_player_id') || '';
 }
-
-export function setPlayerId(id: string | number): void {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('puppet_player_id', String(id));
+export function syncUrlWithPlayer(id: string | number): void {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("p") !== String(id)) {
+      url.searchParams.set("p", String(id));
+      window.history.replaceState(null, "", url.toString());
+    }
+  } catch {
+    // Ignore URL formatting issues
   }
 }
+
+export function setPlayerId(id: string | number): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("puppet_player_id", String(id));
+  }
+  syncUrlWithPlayer(id);
+}
+
 
 export function getPlayerName(): string {
   if (typeof localStorage === 'undefined') return '';
@@ -401,6 +415,41 @@ export async function savePlayerProgress(
 // ─── Tải tiến trình người chơi ───────────────────────────────────────────────
 
 export async function loadPlayerProgress(): Promise<PlayerProfile> {
+  // 1. Kiểm tra nếu có mã người chơi trên URL (deeplink / mở qua trình duyệt khác: ?p=... hoặc ?player=...)
+  if (typeof window !== "undefined") {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlId = params.get("p") || params.get("player") || params.get("id");
+      if (urlId) {
+        const { data, error } = await supabase
+          .from("players")
+          .select("id, name, avatar, level, deaths, play_time")
+          .eq("id", urlId)
+          .maybeSingle();
+
+        if (data && !error) {
+          const av = data.avatar || DEFAULT_AVATAR;
+          setPlayerId(data.id);
+          setPlayerName(data.name);
+          setPlayerAvatar(av);
+          setLocalProgress(data.level || 1, data.deaths || 0, data.play_time || 0, av);
+          syncUrlWithPlayer(data.id);
+          return {
+            id: String(data.id),
+            name: data.name,
+            avatar: av,
+            level: data.level || 1,
+            deaths: data.deaths || 0,
+            playTime: data.play_time || 0,
+            hasPlayed: true,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[Supabase] Lỗi nhận diện player từ URL:", err);
+    }
+  }
+
   const local = getLocalProgress();
   const id = getPlayerId();
 

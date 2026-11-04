@@ -36,6 +36,26 @@ export default function HomeScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyShareLink = () => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (profile.id) {
+      url.searchParams.set('p', profile.id);
+    }
+    const fullUrl = url.toString();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      }).catch(() => {
+        prompt('Sao chép link này để tiếp tục chơi trên trình duyệt khác:', fullUrl);
+      });
+    } else {
+      prompt('Sao chép link này để tiếp tục chơi trên trình duyệt khác:', fullUrl);
+    }
+  };
 
   // Trạng thái kiểm tra & Toast báo lỗi không khớp
   const [isCheckingMatch, setIsCheckingMatch] = useState(false);
@@ -216,6 +236,14 @@ export default function HomeScreen({
                 <span className="profile-greeting">Chào mừng trở lại!</span>
                 <span className="profile-name">{profile.name}</span>
               </div>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <button
+                  className="profile-share-btn"
+                  onClick={handleCopyShareLink}
+                  title="Sao chép link để chơi tiếp trên trình duyệt hoặc máy khác"
+                >
+                  {copiedLink ? "✓ Đã chép link" : "🔗 Lưu link"}
+                </button>
               <button
                 className="profile-reset-btn"
                 onClick={() => {
@@ -228,6 +256,7 @@ export default function HomeScreen({
               >
                 Sửa hồ sơ ✎
               </button>
+              </div>
             </div>
             <div className="profile-stats">
               <div className="stat-box">
