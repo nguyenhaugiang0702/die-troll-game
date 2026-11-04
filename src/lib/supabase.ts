@@ -125,7 +125,6 @@ export function setPlayerId(id: string | number): void {
   if (typeof localStorage !== "undefined") {
     localStorage.setItem("puppet_player_id", String(id));
   }
-  syncUrlWithPlayer(id);
 }
 
 
@@ -681,4 +680,40 @@ export async function fetchLeaderboard(): Promise<
     console.error('[Supabase] Lỗi tải bảng xếp hạng:', err);
     return { error: msg };
   }
+}
+
+// ─── Khôi phục tài khoản bằng ID người chơi ──────────────────────────────────
+
+export async function restoreAccountById(id: string): Promise<PlayerProfile> {
+  const cleanId = (id || '').trim();
+  if (!cleanId) {
+    throw new Error('Vui lòng nhập hoặc dán mã ID người chơi!');
+  }
+
+  const { data, error } = await supabase
+    .from('players')
+    .select('id, name, avatar, level, deaths, play_time')
+    .eq('id', cleanId)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error('Không tìm thấy người chơi nào khớp với mã ID này. Vui lòng kiểm tra lại!');
+  }
+
+  const av = data.avatar || DEFAULT_AVATAR;
+  const timeVal = data.play_time || 0;
+  setPlayerId(data.id);
+  setPlayerName(data.name);
+  setPlayerAvatar(av);
+  setLocalProgress(data.level || 1, data.deaths || 0, timeVal, av);
+
+  return {
+    id: String(data.id),
+    name: data.name,
+    avatar: av,
+    level: data.level || 1,
+    deaths: data.deaths || 0,
+    playTime: timeVal,
+    hasPlayed: true,
+  };
 }

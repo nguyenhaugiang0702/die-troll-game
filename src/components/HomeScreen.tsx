@@ -9,6 +9,7 @@ import {
   formatPlayTime,
   AVATAR_LIST,
   DEFAULT_AVATAR,
+  restoreAccountById,
   type PlayerProfile,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
@@ -31,44 +32,102 @@ export default function HomeScreen({
 }: HomeScreenProps) {
   const [showNameModal, setShowNameModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATAR);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
-  const handleCopyShareLink = () => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    if (profile.id) {
-      url.searchParams.set('p', profile.id);
+  // Sao chép ID & Khôi phục ID
+  const [copiedId, setCopiedId] = useState(false);
+  const [restoreIdInput, setRestoreIdInput] = useState('');
+  const [restoreError, setRestoreError] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Sao chép ID người chơi
+  const handleCopyId = async () => {
+    if (!profile.id) return;
+    const idStr = String(profile.id);
+    let copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(idStr);
+        copied = true;
+      }
+    } catch {
+      // fallback
     }
-    const fullUrl = url.toString();
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(fullUrl).then(() => {
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2500);
-      }).catch(() => {
-        prompt('Sao chép link này để tiếp tục chơi trên trình duyệt khác:', fullUrl);
-      });
+
+    if (!copied) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = idStr;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch {
+        // fallback
+      }
+    }
+
+    if (copied) {
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2200);
     } else {
-      prompt('Sao chép link này để tiếp tục chơi trên trình duyệt khác:', fullUrl);
+      setToastData({
+        type: 'error',
+        title: 'Không thể tự sao chép',
+        message: `Trình duyệt chặn sao chép. Hãy chép thủ công mã ID: ${idStr}`,
+      });
+    }
+  };
+
+  // Khôi phục tài khoản bằng ID
+  const handleConfirmRestoreId = async () => {
+    const trimmed = restoreIdInput.trim();
+    if (!trimmed) {
+      setRestoreError('Vui lòng nhập hoặc dán mã ID người chơi!');
+      return;
+    }
+
+    try {
+      setIsRestoring(true);
+      setRestoreError('');
+      const restored = await restoreAccountById(trimmed);
+      await onRefreshProfile();
+      setShowRestoreModal(false);
+      setToastData({
+        type: 'success',
+        title: 'Khôi phục thành công!',
+        message: `Chào mừng ${restored.name} trở lại! Tiến trình của bạn: Màn ${restored.level}.`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể khôi phục tài khoản.';
+      setRestoreError(msg);
+    } finally {
+      setIsRestoring(false);
     }
   };
 
   // Trạng thái kiểm tra & Toast báo lỗi không khớp
   const [isCheckingMatch, setIsCheckingMatch] = useState(false);
   const [toastData, setToastData] = useState<{
+    type?: 'success' | 'warning' | 'error';
     title: string;
     message: string;
     serverData?: { level: number; deaths: number; playTime: number; name: string; avatar?: string };
+    confirmLabel?: string;
+    onConfirm?: () => void;
   } | null>(null);
 
   // Xử lý khi nhấn nút "Chơi Ngay"
   const handlePlayClick = async () => {
     sound.unlockAudio();
-    // Nếu chưa chơi lần nào (chưa có tên hoặc chưa có tiến trình)
     if (!profile.hasPlayed || !profile.name) {
       setNameInput('');
       setSelectedAvatar(DEFAULT_AVATAR);
@@ -77,7 +136,6 @@ export default function HomeScreen({
       return;
     }
 
-    // Đã từng chơi: xoay ngang ngay trong thao tác nhấn, rồi đối soát LocalStorage với Server
     void enterLandscape();
     setIsCheckingMatch(true);
     setToastData(null);
@@ -91,20 +149,19 @@ export default function HomeScreen({
       return;
     }
 
-    // Nếu KHÔNG MATCH: Chặn vào game và hiện Toast cảnh báo chung
     if (!check.isMatch) {
       void exitLandscape();
       setToastData({
-        title: 'Lỗi đồng bộ dữ liệu',
+        type: 'warning',
+        title: 'Cần xác nhận đồng bộ dữ liệu',
         message:
           check.message ||
-          'Dữ liệu trò chơi không đồng bộ hoặc đã bị thay đổi. Vui lòng đồng bộ lại để tiếp tục.',
+          'Dữ liệu trò chơi không đồng bộ hoặc đã bị thay đổi. Vui lòng xác nhận để đồng bộ lại.',
         serverData: check.serverData,
       });
       return;
     }
 
-    // Nếu MATCH: Vào đúng level của server/local
     const finalLevel = check.serverData?.level ?? profile.level;
     const finalDeaths = check.serverData?.deaths ?? profile.deaths;
     const finalPlayTime = check.serverData?.playTime ?? profile.playTime;
@@ -167,35 +224,44 @@ export default function HomeScreen({
     }
   };
 
+  // Đặt lại hồ sơ (Tạo mới) - xác nhận bằng Toast
   const handleResetProfile = () => {
-    if (window.confirm('Bạn có chắc muốn xoá tiến trình trên máy này để tạo người chơi mới?')) {
-      clearPlayerSession();
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('puppet_active_screen', 'home');
-      }
-      setShowEditModal(false);
-      onRefreshProfile();
-    }
-  };
-
-  // Khôi phục dữ liệu Local theo Server khi bị sai lệch
-  const handleSyncServer = async () => {
-    if (toastData?.serverData) {
-      syncLocalWithServer(toastData.serverData);
-      await onRefreshProfile();
-      setToastData(null);
-    }
+    setToastData({
+      type: 'warning',
+      title: 'Đổi tài khoản?',
+      message:
+        'Bạn sẽ thoát khỏi tài khoản trên thiết bị này. Tiến trình vẫn được lưu trên máy chủ, hãy sao chép ID trước để đăng nhập lại sau.',
+      confirmLabel: 'Thoát tài khoản',
+      onConfirm: () => {
+        clearPlayerSession();
+        setShowEditModal(false);
+        setToastData(null);
+        onRefreshProfile();
+      },
+    });
   };
 
   return (
     <div className="home-container">
-      {/* Toast thông báo lỗi */}
+      {/* Toast thông báo */}
       {toastData && (
         <Toast
+          type={toastData.type || 'warning'}
           title={toastData.title}
           message={toastData.message}
-          onSyncServer={toastData.serverData ? handleSyncServer : undefined}
           onClose={() => setToastData(null)}
+          onConfirm={
+            toastData.onConfirm
+              ? toastData.onConfirm
+              : toastData.serverData
+              ? () => {
+                  syncLocalWithServer(toastData.serverData!);
+                  setToastData(null);
+                  onRefreshProfile();
+                }
+              : undefined
+          }
+          confirmLabel={toastData.confirmLabel || (toastData.serverData ? 'Đồng bộ lại' : undefined)}
         />
       )}
 
@@ -230,32 +296,39 @@ export default function HomeScreen({
                 }}
                 title="Nhấn để đổi Avatar & Tên"
               >
-                <AvatarDisplay avatar={profile.avatar || DEFAULT_AVATAR} size={40} />
+                <AvatarDisplay avatar={profile.avatar || DEFAULT_AVATAR} size={42} />
               </button>
               <div className="profile-details">
                 <span className="profile-greeting">Chào mừng trở lại!</span>
                 <span className="profile-name">{profile.name}</span>
+                {profile.id && (
+                  <span className="profile-id-badge" title={`Mã ID đầy đủ: ${profile.id}`}>
+                    ID: <code>{profile.id.length > 10 ? `${profile.id.slice(0, 8)}...` : profile.id}</code>
+                  </span>
+                )}
               </div>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <div className="profile-actions">
                 <button
-                  className="profile-share-btn"
-                  onClick={handleCopyShareLink}
-                  title="Sao chép link để chơi tiếp trên trình duyệt hoặc máy khác"
+                  type="button"
+                  className="btn-profile-copy-id"
+                  onClick={handleCopyId}
+                  title="Sao chép ID để nhập vào trình duyệt khác khôi phục tiến trình"
                 >
-                  {copiedLink ? "✓ Đã chép link" : "🔗 Lưu link"}
+                  {copiedId ? '✓ Đã chép ID' : '📋 Sao chép ID'}
                 </button>
-              <button
-                className="profile-reset-btn"
-                onClick={() => {
-                  setNameInput(profile.name);
-                  setSelectedAvatar(profile.avatar || DEFAULT_AVATAR);
-                  setNameError('');
-                  setShowEditModal(true);
-                }}
-                title="Đổi tên / Avatar"
-              >
-                Sửa hồ sơ ✎
-              </button>
+                <button
+                  type="button"
+                  className="profile-reset-btn"
+                  onClick={() => {
+                    setNameInput(profile.name);
+                    setSelectedAvatar(profile.avatar || DEFAULT_AVATAR);
+                    setNameError('');
+                    setShowEditModal(true);
+                  }}
+                  title="Đổi tên / Avatar"
+                >
+                  Sửa ✎
+                </button>
               </div>
             </div>
             <div className="profile-stats">
@@ -278,12 +351,26 @@ export default function HomeScreen({
             </div>
           </div>
         ) : (
-          <div className="profile-new">
-            <span className="profile-new-icon">✨</span>
-            <div className="profile-new-text">
-              <strong>Người chơi mới</strong>
-              <span>Chưa có tiến trình lưu trữ trên thiết bị này</span>
+          <div className="profile-new-box">
+            <div className="profile-new">
+              <span className="profile-new-icon">✨</span>
+              <div className="profile-new-text">
+                <strong>Người chơi mới</strong>
+                <span>Chưa có tiến trình trên trình duyệt này</span>
+              </div>
             </div>
+            <button
+              type="button"
+              className="btn-open-restore-id"
+              onClick={() => {
+                setRestoreIdInput('');
+                setRestoreError('');
+                setShowRestoreModal(true);
+              }}
+              title="Nhập mã ID người chơi bạn đã sao chép từ thiết bị cũ"
+            >
+              🔑 Khôi phục bằng ID
+            </button>
           </div>
         )}
       </div>
@@ -307,7 +394,7 @@ export default function HomeScreen({
             </span>
             <span className="btn-sub-text">
               {isCheckingMatch
-                ? 'Đối soát LocalStorage với Server...'
+                ? 'Đối soát dữ liệu với Server...'
                 : profile.hasPlayed && profile.name
                 ? 'Tiếp tục hành trình của bạn'
                 : 'Bắt đầu từ Màn 1'}
@@ -337,26 +424,25 @@ export default function HomeScreen({
         <span className="tip-item">R : Chơi lại màn</span>
       </div>
 
-      {/* Modal Nhập Tên & Chọn/Tải Avatar cho người chơi mới */}
+      {/* Modal Nhập Tên & Chọn Avatar cho người chơi mới */}
       {showNameModal && (
         <div className="modal-overlay" onClick={() => !isSubmitting && setShowNameModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Chào Mừng Người Chơi!</h3>
             <p className="modal-desc">
-              Tải ảnh đại diện hoặc chọn biểu tượng và đặt tên của bạn:
+              Chọn biểu tượng và đặt tên của bạn để bắt đầu vượt 50 màn troll:
             </p>
 
-            {/* Avatar Preview & Upload */}
-            <div className="avatar-picker-label">Hình đại diện (Avatar):</div>
+            {/* Quick Presets Avatar */}
+            <div className="avatar-picker-label">Hình đại diện:</div>
             <div className="avatar-preview-box">
               <div className="avatar-preview-circle">
                 <AvatarDisplay avatar={selectedAvatar} size={56} />
               </div>
             </div>
 
-            {/* Quick Presets */}
             <div className="avatar-picker-label" style={{ marginTop: '8px' }}>
-              Hoặc chọn biểu tượng có sẵn:
+              Chọn biểu tượng có sẵn:
             </div>
             <div className="avatar-grid">
               {AVATAR_LIST.map((av) => (
@@ -388,9 +474,26 @@ export default function HomeScreen({
 
             {nameError && (
               <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-8px 0 12px 0', textAlign: 'center' }}>
-                ⚠️ {nameError}
+                ❌ {nameError}
               </p>
             )}
+
+            {/* Chuyển sang khôi phục bằng ID */}
+            <div className="modal-switch-box">
+              <span>Đã chơi trên trình duyệt khác?</span>
+              <button
+                type="button"
+                className="btn-switch-restore"
+                onClick={() => {
+                  setShowNameModal(false);
+                  setRestoreIdInput('');
+                  setRestoreError('');
+                  setShowRestoreModal(true);
+                }}
+              >
+                🔑 Nhập ID để khôi phục tiến trình ➔
+              </button>
+            </div>
 
             <div className="modal-buttons">
               <button
@@ -413,24 +516,23 @@ export default function HomeScreen({
         </div>
       )}
 
-      {/* Modal Sửa Hồ Sơ (Tên & Avatar ảnh/biểu tượng) */}
+      {/* Modal Sửa Hồ Sơ */}
       {showEditModal && (
         <div className="modal-overlay" onClick={() => !isSubmitting && setShowEditModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Hồ Sơ Người Chơi</h3>
-            <p className="modal-desc">Tải ảnh đại diện mới hoặc đổi tên hiển thị của bạn:</p>
+            <p className="modal-desc">Đổi tên hiển thị hoặc biểu tượng đại diện của bạn:</p>
 
-            {/* Avatar Preview & Upload */}
-            <div className="avatar-picker-label">Hình đại diện (Avatar):</div>
+            {/* Avatar Preview */}
+            <div className="avatar-picker-label">Hình đại diện:</div>
             <div className="avatar-preview-box">
               <div className="avatar-preview-circle">
                 <AvatarDisplay avatar={selectedAvatar} size={56} />
               </div>
             </div>
 
-            {/* Quick Presets */}
             <div className="avatar-picker-label" style={{ marginTop: '8px' }}>
-              Hoặc chọn biểu tượng có sẵn:
+              Chọn biểu tượng có sẵn:
             </div>
             <div className="avatar-grid">
               {AVATAR_LIST.map((av) => (
@@ -462,8 +564,28 @@ export default function HomeScreen({
 
             {nameError && (
               <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-8px 0 12px 0', textAlign: 'center' }}>
-                ⚠️ {nameError}
+                ❌ {nameError}
               </p>
+            )}
+
+            {/* Mã ID người chơi đầy đủ */}
+            {profile.id && (
+              <div className="modal-id-section">
+                <div className="modal-id-header">
+                  <span className="avatar-picker-label" style={{ margin: 0 }}>Mã ID tài khoản của bạn:</span>
+                  <button
+                    type="button"
+                    className="btn-modal-copy-id"
+                    onClick={handleCopyId}
+                  >
+                    {copiedId ? '✓ Đã chép' : '📋 Sao chép ID'}
+                  </button>
+                </div>
+                <div className="modal-id-box">
+                  <code className="modal-id-code">{profile.id}</code>
+                </div>
+                <p className="modal-id-hint">Lưu mã này để dán vào trình duyệt khác khi muốn chơi tiếp.</p>
+              </div>
             )}
 
             <div className="modal-buttons" style={{ justifyContent: 'space-between' }}>
@@ -472,9 +594,9 @@ export default function HomeScreen({
                 style={{ color: '#ff6b6b', borderColor: '#6b2d3d' }}
                 onClick={handleResetProfile}
                 disabled={isSubmitting}
-                title="Xoá tiến trình và tạo tài khoản mới"
+                title="Thoát khỏi tài khoản trên thiết bị này (tiến trình vẫn được lưu trên máy chủ)"
               >
-                Chơi mới
+                🚪 Đổi tài khoản
               </button>
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -493,6 +615,77 @@ export default function HomeScreen({
                   {isSubmitting ? 'Đang lưu...' : 'Lưu hồ sơ'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Khôi Phục Bằng ID */}
+      {showRestoreModal && (
+        <div className="modal-overlay" onClick={() => !isRestoring && setShowRestoreModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">🔑 Khôi Phục Bằng ID</h3>
+            <p className="modal-desc">
+              Dán mã ID người chơi bạn đã sao chép từ Zalo / Safari cũ để lấy lại toàn bộ tiến trình:
+            </p>
+
+            <div className="restore-input-group">
+              <input
+                className="modal-input restore-id-input"
+                placeholder="Dán mã ID (ví dụ: a1b2c3d4-...)"
+                value={restoreIdInput}
+                onChange={(e) => {
+                  setRestoreIdInput(e.target.value);
+                  if (restoreError) setRestoreError('');
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && !isRestoring && handleConfirmRestoreId()}
+                autoFocus
+                disabled={isRestoring}
+              />
+              <button
+                type="button"
+                className="btn-paste-clipboard"
+                onClick={async () => {
+                  try {
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                      const text = await navigator.clipboard.readText();
+                      if (text) {
+                        setRestoreIdInput(text.trim());
+                        if (restoreError) setRestoreError('');
+                      }
+                    }
+                  } catch {
+                    // Clipboard denied
+                  }
+                }}
+                title="Dán nhanh từ bộ nhớ tạm"
+              >
+                📋 Dán
+              </button>
+            </div>
+
+            {restoreError && (
+              <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-4px 0 12px 0', textAlign: 'center' }}>
+                ❌ {restoreError}
+              </p>
+            )}
+
+            <div className="modal-buttons">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowRestoreModal(false)}
+                disabled={isRestoring}
+              >
+                Hủy
+              </button>
+              <button
+                className="btn-action"
+                onClick={handleConfirmRestoreId}
+                disabled={isRestoring}
+                style={{ padding: '8px 20px', minWidth: '130px' }}
+              >
+                {isRestoring ? 'Đang kiểm tra...' : 'Khôi Phục Tiến Trình 🚀'}
+              </button>
             </div>
           </div>
         </div>

@@ -305,6 +305,7 @@ export default function GameCanvas({
   const [nameInput, setNameInput] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const updateSync = useCallback((text: string, type: string) => {
     setSyncStatus({ text, type });
@@ -396,7 +397,7 @@ export default function GameCanvas({
   const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) {
-      alert('Vui lòng nhập tên!');
+      setErrorToast('Vui lòng nhập tên!');
       return;
     }
     const res = await registerOrFindPlayer(trimmed, selectedAvatar);
@@ -468,12 +469,22 @@ export default function GameCanvas({
 
       {showRestartConfirm && (
         <Toast
-          title="Chơi lại từ đầu?"
+          type="warning"
+          title="Xác nhận chơi lại từ đầu?"
           message="Toàn bộ tiến trình hiện tại (màn chơi, số lần chết, thời gian) sẽ bị xóa và bạn bắt đầu lại từ Màn 1."
           closeLabel="Hủy"
           confirmLabel="🔁 Chơi lại"
           onConfirm={handleRestartAll}
           onClose={() => setShowRestartConfirm(false)}
+        />
+      )}
+
+      {errorToast && (
+        <Toast
+          type="error"
+          title="Có lỗi xảy ra"
+          message={errorToast}
+          onClose={() => setErrorToast(null)}
         />
       )}
 

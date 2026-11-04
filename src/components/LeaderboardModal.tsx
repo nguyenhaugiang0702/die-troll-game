@@ -86,7 +86,7 @@ export default function LeaderboardModal({
 
           <div className="lb-table-container">
             {loading && <div className="lb-empty">Đang tải bảng xếp hạng...</div>}
-            {error && <div className="lb-empty lb-error">⚠️ {error}</div>}
+            {error && <div className="lb-empty lb-error">❌ {error}</div>}
             {!loading && !error && leaderboard && leaderboard.length === 0 && (
               <div className="lb-empty">Chưa có ai lưu điểm. Hãy là người đầu tiên chinh phục!</div>
             )}

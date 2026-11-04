@@ -968,6 +968,60 @@ p.hint {
   color: #fff;
 }
 
+.profile-id-badge {
+  font-size: 11px;
+  color: #8b82ab;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  user-select: all;
+}
+
+.profile-id-badge code {
+  font-family: monospace;
+  color: #c4b5fd;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-profile-copy-id {
+  background: rgba(138, 123, 255, 0.15);
+  border: 1px solid #8a7bff;
+  color: #f5c542;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.btn-profile-copy-id:hover {
+  background: rgba(138, 123, 255, 0.32);
+  color: #ffd866;
+  border-color: #f5c542;
+  transform: translateY(-1px);
+}
+
+.btn-profile-copy-id:active {
+  transform: scale(0.96);
+}
+
 .profile-reset-btn {
   background: transparent;
   border: 1px solid #483d73;
@@ -1046,6 +1100,218 @@ p.hint {
 .profile-new-text strong {
   color: #8a7bff;
   font-size: 15px;
+}
+
+/* Thẻ người chơi mới kèm nút khôi phục ID */
+.profile-new-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.btn-open-restore-id {
+  background: rgba(138, 123, 255, 0.16);
+  border: 1.5px solid #8a7bff;
+  color: #f5c542;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-open-restore-id:hover {
+  background: rgba(138, 123, 255, 0.3);
+  border-color: #f5c542;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(138, 123, 255, 0.25);
+}
+
+.btn-open-restore-id:active {
+  transform: scale(0.97);
+}
+
+/* Chuyển đổi sang modal khôi phục */
+.modal-switch-box {
+  margin: 10px 0 14px 0;
+  padding: 8px 12px;
+  background: rgba(138, 123, 255, 0.08);
+  border: 1px dashed rgba(138, 123, 255, 0.4);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #bbb4d6;
+}
+
+.btn-switch-restore {
+  background: transparent;
+  border: none;
+  color: #f5c542;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.18s;
+  text-decoration: underline;
+}
+
+.btn-switch-restore:hover {
+  color: #ffd866;
+}
+
+/* Khối xem và copy ID trong modal Sửa hồ sơ */
+.modal-id-section {
+  margin: 14px 0 12px 0;
+  padding: 10px 12px;
+  background: rgba(15, 11, 26, 0.7);
+  border: 1px solid #3d3463;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-id-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn-modal-copy-id {
+  background: rgba(138, 123, 255, 0.2);
+  border: 1px solid #8a7bff;
+  color: #f5c542;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.btn-modal-copy-id:hover {
+  background: #f5c542;
+  color: #1a1528;
+}
+
+.modal-id-box {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.modal-id-code {
+  font-family: monospace;
+  font-size: 12px;
+  color: #c4b5fd;
+  word-break: break-all;
+  user-select: all;
+}
+
+.modal-id-hint {
+  font-size: 11px;
+  color: #8b82ab;
+  margin: 0;
+}
+
+/* Ô nhập ID và nút Dán trong Modal Khôi phục */
+.restore-input-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 14px;
+  align-items: stretch;
+}
+
+.restore-id-input {
+  margin-bottom: 0 !important;
+  font-family: monospace !important;
+  font-size: 13px !important;
+  letter-spacing: 0.3px;
+  flex: 1;
+}
+
+.btn-paste-clipboard {
+  background: #2b234b;
+  border: 1.5px solid #6c5bb5;
+  color: #f5c542;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-paste-clipboard:hover {
+  background: #3b306b;
+  border-color: #f5c542;
+}
+
+.btn-paste-clipboard:active {
+  transform: scale(0.96);
+}
+
+/* Tinh chỉnh Responsive trên Mobile */
+@media (max-width: 520px) {
+  .profile-header {
+    flex-wrap: wrap;
+    gap: 10px 8px;
+  }
+
+  .profile-details {
+    min-width: 140px;
+  }
+
+  .profile-actions {
+    width: 100%;
+    justify-content: stretch;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-profile-copy-id,
+  .profile-reset-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .profile-new-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn-open-restore-id {
+    width: 100%;
+    justify-content: center;
+    padding: 9px 12px;
+  }
+
+  .modal-switch-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 /* 2 Nút hành động chính */
@@ -1174,10 +1440,10 @@ p.hint {
 
 .toast-card {
   background: #1c1527;
-  border: 1.5px solid #ff5c7a;
+  border: 1.5px solid #f59e0b;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 92, 122, 0.25);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(245, 158, 11, 0.25);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1198,13 +1464,79 @@ p.hint {
 
 .toast-icon {
   font-size: 20px;
+  line-height: 1;
 }
 
 .toast-title {
   font-size: 15px;
   font-weight: 700;
-  color: #ff5c7a;
+  color: #f5c542;
   margin: 0;
+}
+
+/* Toast Success: Xanh lá cho thông báo Thành công / OK */
+.toast-card-success {
+  border-color: #10b981 !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 24px rgba(16, 185, 129, 0.3) !important;
+}
+
+.toast-title-success {
+  color: #10b981 !important;
+}
+
+.btn-toast-action-success {
+  background: #10b981 !important;
+  border-color: #34d399 !important;
+  color: #064e3b !important;
+  font-weight: 700 !important;
+}
+
+.btn-toast-action-success:hover {
+  background: #059669 !important;
+  color: #fff !important;
+}
+
+/* Toast Warning: Vàng/Cam khi cần Xác nhận (Confirm) hoặc Cảnh báo */
+.toast-card-warning {
+  border-color: #f59e0b !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 24px rgba(245, 158, 11, 0.3) !important;
+}
+
+.toast-title-warning {
+  color: #f5c542 !important;
+}
+
+.btn-toast-action-warning {
+  background: #f59e0b !important;
+  border-color: #fbbf24 !important;
+  color: #1a1528 !important;
+  font-weight: 700 !important;
+}
+
+.btn-toast-action-warning:hover {
+  background: #d97706 !important;
+  color: #fff !important;
+}
+
+/* Toast Error: Đỏ khi có Lỗi */
+.toast-card-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 24px rgba(239, 68, 68, 0.3) !important;
+}
+
+.toast-title-error {
+  color: #ef4444 !important;
+}
+
+.btn-toast-action-error {
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.btn-toast-action-error:hover {
+  background: #dc2626 !important;
 }
 
 .toast-close-btn {
