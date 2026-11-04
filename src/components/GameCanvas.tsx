@@ -15,6 +15,8 @@ import {
 import LeaderboardModal from './LeaderboardModal';
 import AvatarDisplay from './AvatarDisplay';
 import Toast from './Toast';
+import { sound } from '@/lib/sound';
+import SoundButton from './SoundButton';
 
 interface GameCanvasProps {
   initialLevel?: number;
@@ -129,6 +131,7 @@ function createGameEngine(
 
   function die() {
     if (st !== 'play') return;
+    sound.playDeath();
     st = 'dead'; tm = 50; deaths++;
     msg = trolls[Math.random() * trolls.length | 0];
     callbacks.onDie(lv, deaths, Math.floor(playTime));
@@ -163,7 +166,7 @@ function createGameEngine(
         pl.vy = 0;
       }
     });
-    if ((keys[' '] || keys.ArrowUp || keys.w || keys.W) && pl.g) { pl.vy = -12.5; pl.g = 0; }
+    if ((keys[' '] || keys.ArrowUp || keys.w || keys.W) && pl.g) { pl.vy = -12.5; pl.g = 0; sound.playJump(); }
     L.P.forEach((p: any) => { if (p.hide) p.sh = Math.abs(pl.x + 8 - (p.x + p.w / 2)) < 110 && Math.abs(pl.y - p.y) < 220; });
     L.S.forEach((s: any) => { if (s.on && hit(pl, s, 5)) die(); });
     (L.F || []).forEach((f: any) => { if (hit(pl, f)) die(); });
@@ -173,8 +176,10 @@ function createGameEngine(
       callbacks.onLevelUp(lv, deaths, Math.floor(playTime));
       if (lv >= LV.length) {
         st = 'win';
+        sound.playWin();
         callbacks.onWin(deaths, Math.floor(playTime));
       } else {
+        sound.playLevelUp();
         load();
       }
     }
@@ -451,6 +456,7 @@ export default function GameCanvas({
         </div>
 
         <div className="top-right">
+          <SoundButton className="desktop-sound-btn" size="sm" />
           <button className="btn-action" onClick={() => setShowRestartConfirm(true)}>
             🔁 Chơi lại từ đầu
           </button>
@@ -507,14 +513,18 @@ export default function GameCanvas({
             </button>
           ))}
         </div>
+        <div className="pad-center-group">
         <button id="rs" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>
           ↻
         </button>
+          <SoundButton className="mobile-sound-btn" size="sm" />
+        </div>
         <button
           className="jump"
           aria-label="Nhảy"
           onPointerDown={(e) => {
             e.preventDefault();
+            sound.unlockAudio();
             padPress('ArrowUp');
           }}
           onPointerUp={() => padRelease('ArrowUp')}

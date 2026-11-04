@@ -1324,6 +1324,55 @@ body {
   --app-h: 100dvh;
 }
 
+/* Nút chuyển đổi âm thanh */
+.btn-sound-toggle {
+  background: #25203b;
+  border: 1px solid #483d73;
+  color: #e8e4f5;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-sound-toggle:hover {
+  background: #383057;
+  border-color: #6a5ca8;
+}
+
+.btn-sound-toggle:active {
+  transform: scale(0.95);
+}
+
+.sound-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.home-top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -10px;
+}
+
+.pad-center-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-sound-btn {
+  display: none !important;
+}
+
 /* ── Điện thoại / màn hình cảm ứng: bố cục ngang ─────────────────────────────── */
 @media (pointer: coarse) {
   p.hint {
@@ -1460,6 +1509,28 @@ body {
     font-size: 18px;
     background: rgba(32, 27, 51, .75);
     border-color: #483d73;
+  }
+
+  .desktop-sound-btn {
+    display: none !important;
+  }
+
+  .mobile-sound-btn {
+    display: inline-flex !important;
+  }
+
+  #pad .btn-sound-toggle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    padding: 0;
+    justify-content: center;
+    background: rgba(32, 27, 51, 0.75);
+    border: 2px solid #483d73;
+  }
+
+  #pad .btn-sound-toggle .sound-label {
+    display: none;
   }
 
   #pad button.on,

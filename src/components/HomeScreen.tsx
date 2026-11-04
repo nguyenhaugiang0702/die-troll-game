@@ -14,6 +14,8 @@ import {
 import LeaderboardModal from './LeaderboardModal';
 import Toast from './Toast';
 import AvatarDisplay from './AvatarDisplay';
+import SoundButton from './SoundButton';
+import { sound } from '@/lib/sound';
 import { enterLandscape, exitLandscape } from '@/lib/landscape';
 
 interface HomeScreenProps {
@@ -45,6 +47,7 @@ export default function HomeScreen({
 
   // Xử lý khi nhấn nút "Chơi Ngay"
   const handlePlayClick = async () => {
+    sound.unlockAudio();
     // Nếu chưa chơi lần nào (chưa có tên hoặc chưa có tiến trình)
     if (!profile.hasPlayed || !profile.name) {
       setNameInput('');
@@ -175,6 +178,11 @@ export default function HomeScreen({
           onClose={() => setToastData(null)}
         />
       )}
+
+      {/* Top Bar: Nút Bật/Tắt Âm Thanh */}
+      <div className="home-top-bar">
+        <SoundButton size="md" />
+      </div>
 
       {/* Hero / Game Logo */}
       <div className="home-hero">

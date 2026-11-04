@@ -5,6 +5,7 @@ import HomeScreen from '@/components/HomeScreen';
 import GameCanvas from '@/components/GameCanvas';
 import { loadPlayerProgress, type PlayerProfile } from '@/lib/supabase';
 import { exitLandscape } from '@/lib/landscape';
+import { sound } from '@/lib/sound';
 
 export default function Home() {
   const [screen, setScreen] = useState<'home' | 'game'>('home');
