@@ -2,18 +2,21 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import {
-  getPlayerId,
   getPlayerName,
   setPlayerName,
   savePlayerProgress,
-  loadPlayerProgress,
-  fetchLeaderboard,
-  type Player,
+  registerOrFindPlayer,
 } from '@/lib/supabase';
+import LeaderboardModal from './LeaderboardModal';
+
+interface GameCanvasProps {
+  initialLevel?: number;
+  initialDeaths?: number;
+  playerName?: string;
+  onBackToHome?: () => void;
+}
 
 // ─── Game engine (vanilla JS) ─────────────────────────────────────────────────
-// Toàn bộ logic game được đặt trong hàm này để chạy bên trong useEffect,
-// nhận canvas element từ React ref thay vì document.getElementById.
 
 function createGameEngine(
   canvas: HTMLCanvasElement,
@@ -21,7 +24,9 @@ function createGameEngine(
     onDie: (lv: number, deaths: number) => void;
     onLevelUp: (lv: number, deaths: number) => void;
     onWin: (deaths: number) => void;
-  }
+  },
+  startLevel = 1,
+  startDeaths = 0
 ) {
   const x = canvas.getContext('2d')!;
   const W = 800, H = 450;
@@ -39,7 +44,11 @@ function createGameEngine(
   const FK = (fx = 740, fy = 320) => ({ x: fx, y: fy, w: 30, h: 60 });
   const DR = (dx = 740) => ({ x: dx, y: 320 });
 
-  let L: any, lv = 0, deaths = 0, keys: Record<string, number> = {}, pl: any;
+  let L: any,
+    lv = Math.max(0, Math.min((startLevel || 1) - 1, 49)),
+    deaths = Math.max(0, startDeaths || 0),
+    keys: Record<string, number> = {},
+    pl: any;
   let fx_: any[] = [], st = 'play', tm = 0, msg = '';
   const trolls = ['Ối!', 'Lại nữa à?', 'Tin tưởng làm gì...', 'Cố lên nào!', 'Rối đứt dây rồi', 'Tưởng dễ à? :)', 'Gần được rồi... là nói dối'];
 
@@ -191,7 +200,7 @@ function createGameEngine(
       x.font = `700 32px ${FONT}`; x.fillText(`Bạn đã vượt qua cả ${LV.length} màn!`, W / 2, 190);
       x.fillStyle = '#e8e4f5'; x.font = `400 19px ${FONT}`;
       x.fillText('Tổng số lần chết: ' + deaths, W / 2, 238);
-      x.fillText('Nhấn Enter hoặc chạm màn hình để chơi lại', W / 2, 278);
+      x.fillText('Nhấn Enter hoặc chạm màn hình để chơi lại từ đầu', W / 2, 278);
     }
   }
 
@@ -228,7 +237,9 @@ function createGameEngine(
     clearKeys() { keys = {}; },
     restart() { lv = 0; deaths = 0; load(); },
     restartFrom(level: number, savedDeaths: number) {
-      lv = level - 1; deaths = savedDeaths; load();
+      lv = Math.max(0, Math.min(level - 1, LV.length - 1));
+      deaths = savedDeaths;
+      load();
     },
     destroy() { cancelAnimationFrame(rafId); },
   };
@@ -236,71 +247,70 @@ function createGameEngine(
 
 // ─── React Component ──────────────────────────────────────────────────────────
 
-export default function GameCanvas() {
+export default function GameCanvas({
+  initialLevel = 1,
+  initialDeaths = 0,
+  playerName: initialPlayerName = '',
+  onBackToHome,
+}: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null);
 
-  const [playerName, setPlayerNameState] = useState('');
-  const [syncStatus, setSyncStatus] = useState<{ text: string; type: string }>({ text: 'Khởi tạo...', type: 'warning' });
+  const [playerName, setPlayerNameState] = useState(initialPlayerName || getPlayerName());
+  const [syncStatus, setSyncStatus] = useState<{ text: string; type: string }>({
+    text: 'Đã sẵn sàng',
+    type: 'success',
+  });
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<Player[] | null>(null);
-  const [lbError, setLbError] = useState('');
-  const [lbLoading, setLbLoading] = useState(false);
 
   const updateSync = useCallback((text: string, type: string) => {
     setSyncStatus({ text, type });
   }, []);
 
-  const handleSave = useCallback(async (lv: number, deaths: number, immediate = false) => {
-    if (!getPlayerName()) return;
-    updateSync('Đang lưu...', 'saving');
-    try {
-      await savePlayerProgress(lv, deaths, immediate);
-      updateSync('Đã đồng bộ ✓', 'success');
-    } catch {
-      updateSync('Lỗi lưu', 'error');
-    }
-  }, [updateSync]);
+  const handleSave = useCallback(
+    async (lv: number, deaths: number, immediate = false) => {
+      const currentName = getPlayerName();
+      if (!currentName) return;
+      updateSync('Đang lưu...', 'saving');
+      try {
+        await savePlayerProgress(lv, deaths, immediate);
+        updateSync('Đã đồng bộ ✓', 'success');
+      } catch {
+        updateSync('Lỗi lưu', 'error');
+      }
+    },
+    [updateSync]
+  );
 
-  // Khởi chạy game engine
+  // Khởi chạy game engine tại đúng initialLevel và initialDeaths
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const engine = createGameEngine(canvas, {
-      onDie: (lv, deaths) => handleSave(lv, deaths, false),
-      onLevelUp: (lv, deaths) => handleSave(lv, deaths, true),
-      onWin: (deaths) => handleSave(99, deaths, true),
-    });
+    const engine = createGameEngine(
+      canvas,
+      {
+        onDie: (lv, deaths) => handleSave(lv, deaths, false),
+        onLevelUp: (lv, deaths) => handleSave(lv, deaths, true),
+        onWin: (deaths) => handleSave(49, deaths, true),
+      },
+      initialLevel,
+      initialDeaths
+    );
     engineRef.current = engine;
 
-    // Tải tiến trình cũ
-    const name = getPlayerName();
-    if (name) {
-      setPlayerNameState(name);
-    } else {
-      setShowNameModal(true);
+    const currentName = getPlayerName();
+    if (currentName) {
+      setPlayerNameState(currentName);
     }
-
-    loadPlayerProgress().then((prog) => {
-      if (prog.level > 1 && prog.level <= 50) {
-        const ask = window.confirm(
-          `Chào mừng bạn trở lại! Bạn từng đạt đến Màn ${prog.level} (chết ${prog.deaths} lần). Chơi tiếp không?`
-        );
-        if (ask) engine.restartFrom(prog.level, prog.deaths);
-      }
-    });
 
     // Keyboard events
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target && ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
       if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       engine.pressKey(e.key);
-      if ((e.key === 'r' || e.key === 'R') && engine.st !== 'win') {
-        // reload current level handled inside engine
-      }
       if (e.key === 'Enter' && engine.st === 'win') {
         engine.restart();
         handleSave(0, 0, true);
@@ -319,49 +329,67 @@ export default function GameCanvas() {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [handleSave]);
+  }, [handleSave, initialLevel, initialDeaths]);
 
-  // Mobile touch controls
+  // Mobile pad
   const padPress = useCallback((k: string) => engineRef.current?.pressKey(k), []);
   const padRelease = useCallback((k: string) => engineRef.current?.releaseKey(k), []);
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     const trimmed = nameInput.trim();
-    if (!trimmed) { alert('Vui lòng nhập tên!'); return; }
-    setPlayerName(trimmed);
-    setPlayerNameState(trimmed);
+    if (!trimmed) {
+      alert('Vui lòng nhập tên!');
+      return;
+    }
+    const res = await registerOrFindPlayer(trimmed);
+    setPlayerName(res.name);
+    setPlayerNameState(res.name);
     setShowNameModal(false);
     handleSave(engineRef.current?.lv ?? 0, engineRef.current?.deaths ?? 0, true);
   };
 
-  const handleOpenLeaderboard = async () => {
-    setShowLeaderboard(true);
-    setLeaderboard(null);
-    setLbError('');
-    setLbLoading(true);
-    const res = await fetchLeaderboard();
-    setLbLoading(false);
-    if ('error' in res) { setLbError(res.error); }
-    else { setLeaderboard(res.data); }
-  };
-
   const syncColor: Record<string, string> = {
-    success: '#51cf66', saving: '#fcc419', warning: '#adb5bd', error: '#ff6b6b',
+    success: '#51cf66',
+    saving: '#fcc419',
+    warning: '#adb5bd',
+    error: '#ff6b6b',
   };
 
   return (
     <div className="game-wrapper">
       {/* Top bar */}
       <div className="top-bar">
-        <div className="player-info">
-          <button className="player-tag" onClick={() => { setNameInput(playerName); setShowNameModal(true); }}>
-            👤 {playerName || 'Chưa đặt tên'} ✎
-          </button>
-          <span className="status-tag" style={{ color: syncColor[syncStatus.type] || '#adb5bd' }}>
-            {syncStatus.text}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onBackToHome && (
+            <button
+              className="btn-back-home"
+              onClick={onBackToHome}
+              title="Quay lại Trang Chủ"
+            >
+              🏠 Trang Chủ
+            </button>
+          )}
+
+          <div className="player-info">
+            <button
+              className="player-tag"
+              onClick={() => {
+                setNameInput(playerName);
+                setShowNameModal(true);
+              }}
+              title="Nhấn để đổi tên"
+            >
+              👤 {playerName || 'Chưa đặt tên'} ✎
+            </button>
+            <span className="status-tag" style={{ color: syncColor[syncStatus.type] || '#adb5bd' }}>
+              {syncStatus.text}
+            </span>
+          </div>
         </div>
-        <button className="btn-action" onClick={handleOpenLeaderboard}>🏆 Bảng Xếp Hạng</button>
+
+        <button className="btn-action" onClick={() => setShowLeaderboard(true)}>
+          🏆 Bảng Xếp Hạng
+        </button>
       </div>
 
       {/* Canvas */}
@@ -385,30 +413,45 @@ export default function GameCanvas() {
       <div id="pad">
         <div className="grp">
           {['ArrowLeft', 'ArrowRight'].map((k) => (
-            <button key={k}
-              onPointerDown={(e) => { e.preventDefault(); padPress(k); }}
+            <button
+              key={k}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                padPress(k);
+              }}
               onPointerUp={() => padRelease(k)}
               onPointerLeave={() => padRelease(k)}
               onPointerCancel={() => padRelease(k)}
               aria-label={k === 'ArrowLeft' ? 'Sang trái' : 'Sang phải'}
-            >{k === 'ArrowLeft' ? '◀' : '▶'}</button>
+            >
+              {k === 'ArrowLeft' ? '◀' : '▶'}
+            </button>
           ))}
         </div>
-        <button id="rs" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>↻</button>
-        <button className="jump" aria-label="Nhảy"
-          onPointerDown={(e) => { e.preventDefault(); padPress('ArrowUp'); }}
+        <button id="rs" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>
+          ↻
+        </button>
+        <button
+          className="jump"
+          aria-label="Nhảy"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            padPress('ArrowUp');
+          }}
           onPointerUp={() => padRelease('ArrowUp')}
           onPointerLeave={() => padRelease('ArrowUp')}
           onPointerCancel={() => padRelease('ArrowUp')}
-        >Nhảy</button>
+        >
+          Nhảy
+        </button>
       </div>
 
-      {/* Modal nhập tên */}
+      {/* Modal sửa tên */}
       {showNameModal && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h3 className="modal-title">Chào Người Chơi!</h3>
-            <p className="modal-desc">Nhập tên để lưu tiến trình và leo bảng xếp hạng:</p>
+        <div className="modal-overlay" onClick={() => setShowNameModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Đổi Tên Người Chơi</h3>
+            <p className="modal-desc">Nhập tên mới để lưu tiến trình và cập nhật bảng xếp hạng:</p>
             <input
               className="modal-input"
               placeholder="Ví dụ: Rối Tí Nị..."
@@ -419,10 +462,12 @@ export default function GameCanvas() {
               autoFocus
             />
             <div className="modal-buttons">
-              {playerName && (
-                <button className="btn-secondary" onClick={() => setShowNameModal(false)}>Huỷ</button>
-              )}
-              <button className="btn-action" onClick={handleSaveName}>Xác nhận</button>
+              <button className="btn-secondary" onClick={() => setShowNameModal(false)}>
+                Hủy
+              </button>
+              <button className="btn-action" onClick={handleSaveName}>
+                Lưu tên
+              </button>
             </div>
           </div>
         </div>
@@ -430,49 +475,11 @@ export default function GameCanvas() {
 
       {/* Modal Bảng Xếp Hạng */}
       {showLeaderboard && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: 540 }}>
-            <h3 className="modal-title">🏆 Bảng Xếp Hạng Cao Thủ</h3>
-            <div id="lb-content">
-              {lbLoading && <div className="lb-empty">Đang tải...</div>}
-              {lbError && <div className="lb-empty" style={{ color: '#ff6b6b' }}>⚠️ {lbError}</div>}
-              {leaderboard && leaderboard.length === 0 && (
-                <div className="lb-empty">Chưa có ai lưu điểm. Hãy là người đầu tiên!</div>
-              )}
-              {leaderboard && leaderboard.length > 0 && (
-                <table className="lb-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 55 }}>Hạng</th>
-                      <th>Tên người chơi</th>
-                      <th style={{ textAlign: 'center' }}>Màn</th>
-                      <th style={{ textAlign: 'right' }}>Số lần chết</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {leaderboard.map((item, idx) => {
-                      const isMe = playerName && item.name === playerName;
-                      const rank = idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `${idx + 1}`;
-                      return (
-                        <tr key={item.id || idx} className={isMe ? 'me' : ''}>
-                          <td>{rank}</td>
-                          <td>{item.name || 'Ẩn danh'}{isMe ? ' (Bạn)' : ''}</td>
-                          <td style={{ textAlign: 'center', color: '#f5c542', fontWeight: 600 }}>Màn {item.level || 1}</td>
-                          <td style={{ textAlign: 'right' }}>{item.deaths || 0} lần</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <div className="modal-buttons">
-              <button className="btn-secondary" onClick={() => setShowLeaderboard(false)}>Đóng</button>
-            </div>
-          </div>
-        </div>
+        <LeaderboardModal
+          currentPlayerName={playerName}
+          onClose={() => setShowLeaderboard(false)}
+        />
       )}
     </div>
   );
 }
-

@@ -238,6 +238,468 @@ p.hint {
   color: #928ca8;
 }
 
+/* Nút quay lại trang chủ */
+.btn-back-home {
+  background: #25203b;
+  border: 1px solid #483d73;
+  color: #c9c3e0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-back-home:hover {
+  background: #383057;
+  color: #fff;
+  border-color: #6a5ca8;
+}
+
+/* ─── Trang Chủ (HomeScreen) ────────────────────────────────────────────────── */
+.home-container {
+  width: min(100%, 640px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  animation: modalIn 0.3s ease-out;
+}
+
+.home-hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-badge {
+  background: rgba(138, 123, 255, 0.15);
+  border: 1px solid #5a4fa8;
+  color: #a79aff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.home-title {
+  font-size: clamp(32px, 6vw, 44px);
+  font-weight: 900;
+  color: #f5c542;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(245, 197, 66, 0.4), 0 4px 12px rgba(0, 0, 0, 0.7);
+  letter-spacing: -0.5px;
+}
+
+.home-subtitle {
+  font-size: 15px;
+  color: #bbb4d6;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 460px;
+}
+
+/* Thẻ hồ sơ người chơi */
+.home-profile-card {
+  width: 100%;
+  background: #1d1730;
+  border: 1.5px solid #3d3463;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s;
+}
+
+.home-profile-card:hover {
+  border-color: #5d4fa3;
+}
+
+.profile-existing {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-avatar {
+  font-size: 22px;
+  background: #2a2247;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #5a4fa8;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.profile-greeting {
+  font-size: 12px;
+  color: #9d94be;
+}
+
+.profile-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.profile-reset-btn {
+  background: transparent;
+  border: 1px solid #483d73;
+  color: #b7aed8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profile-reset-btn:hover {
+  background: #322854;
+  color: #f5c542;
+  border-color: #8a7bff;
+}
+
+.profile-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #151124;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8b82ab;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e8e4f5;
+}
+
+.stat-value.level-highlight {
+  color: #f5c542;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 28px;
+  background: #2e264d;
+}
+
+.profile-new {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.profile-new-icon {
+  font-size: 24px;
+}
+
+.profile-new-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: #bbb4d6;
+}
+
+.profile-new-text strong {
+  color: #8a7bff;
+  font-size: 15px;
+}
+
+/* 2 Nút hành động chính */
+.home-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-home-play {
+  width: 100%;
+  background: linear-gradient(135deg, #6b5ce7 0%, #4834d4 100%);
+  border: 1.5px solid #8c7ae6;
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 24px rgba(72, 52, 212, 0.45);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.btn-home-play:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(72, 52, 212, 0.6);
+  border-color: #a29bfe;
+}
+
+.btn-home-play:active {
+  transform: translateY(0);
+}
+
+.btn-home-lb {
+  width: 100%;
+  background: #201a38;
+  border: 1.5px solid #483d73;
+  border-radius: 12px;
+  padding: 14px 20px;
+  color: #e8e4f5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.btn-home-lb:hover {
+  background: #2b234b;
+  border-color: #f5c542;
+  transform: translateY(-2px);
+}
+
+.btn-home-lb:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.btn-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.btn-main-text {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.btn-sub-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+}
+
+.home-footer-tips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: #7b739b;
+  margin-top: 4px;
+}
+
+.tip-title {
+  font-weight: 600;
+  color: #9d94be;
+}
+
+.tip-dot {
+  opacity: 0.5;
+}
+
+/* ─── Toast Notification Báo Lỗi Không Khớp ─────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1100;
+  max-width: min(92vw, 440px);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.toast-card {
+  background: #1c1527;
+  border: 1.5px solid #ff5c7a;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 92, 122, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toast-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-icon {
+  font-size: 20px;
+}
+
+.toast-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ff5c7a;
+  margin: 0;
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: #a89dbf;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.toast-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.toast-body {
+  font-size: 13px;
+  color: #d1c9e8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.toast-diff-box {
+  background: #130e1c;
+  border: 1px solid #362947;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toast-diff-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-label {
+  color: #8b80a6;
+  font-size: 11px;
+}
+
+.diff-val-local {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.diff-val-server {
+  color: #51cf66;
+  font-weight: 600;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.btn-toast-action {
+  background: #4b3fb5;
+  border: 1px solid #7365d9;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-toast-action:hover {
+  background: #6253df;
+}
+
+.btn-toast-dismiss {
+  background: transparent;
+  border: 1px solid #483d73;
+  color: #b7aed8;
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-toast-dismiss:hover {
+  background: #2b2344;
+  color: #fff;
+}
+
 /* Điều khiển cảm ứng: chỉ hiện trên thiết bị có màn hình chạm */
 body { touch-action: manipulation; -webkit-touch-callout: none; }
 #pad { display: none; }
