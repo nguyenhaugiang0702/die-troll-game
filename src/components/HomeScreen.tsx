@@ -6,6 +6,7 @@ import {
   clearPlayerSession,
   verifyLocalWithServer,
   syncLocalWithServer,
+  formatPlayTime,
   type PlayerProfile,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
@@ -13,7 +14,7 @@ import Toast from './Toast';
 
 interface HomeScreenProps {
   profile: PlayerProfile;
-  onStartGame: (level: number, deaths: number, name: string) => void;
+  onStartGame: (level: number, deaths: number, playTime: number, name: string) => void;
   onRefreshProfile: () => Promise<void>;
 }
 
@@ -33,8 +34,8 @@ export default function HomeScreen({
   const [toastData, setToastData] = useState<{
     title: string;
     message: string;
-    localData?: { level: number; deaths: number; name: string };
-    serverData?: { level: number; deaths: number; name: string };
+    localData?: { level: number; deaths: number; playTime: number; name: string };
+    serverData?: { level: number; deaths: number; playTime: number; name: string };
   } | null>(null);
 
   // Xử lý khi nhấn nút "Chơi Ngay"
@@ -75,8 +76,9 @@ export default function HomeScreen({
     // Nếu MATCH: Vào đúng level của server/local
     const finalLevel = check.serverData?.level ?? profile.level;
     const finalDeaths = check.serverData?.deaths ?? profile.deaths;
+    const finalPlayTime = check.serverData?.playTime ?? profile.playTime;
     const finalName = check.serverData?.name ?? profile.name;
-    onStartGame(finalLevel, finalDeaths, finalName);
+    onStartGame(finalLevel, finalDeaths, finalPlayTime, finalName);
   };
 
   // Xác nhận nhập tên
@@ -98,7 +100,7 @@ export default function HomeScreen({
       await onRefreshProfile();
       setShowNameModal(false);
       // Vào game đúng level vừa đăng ký hoặc tìm thấy (level 1 nếu mới, hoặc level cũ nếu tên đã chơi)
-      onStartGame(saved.level || 1, saved.deaths || 0, saved.name);
+      onStartGame(saved.level || 1, saved.deaths || 0, saved.playTime || 0, saved.name);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
       setNameError(msg);
@@ -175,6 +177,13 @@ export default function HomeScreen({
               <div className="stat-box">
                 <span className="stat-label">Số lần chết</span>
                 <span className="stat-value">{profile.deaths} lần</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat-box">
+                <span className="stat-label">Thời gian</span>
+                <span className="stat-value" style={{ color: '#a79aff', fontSize: '14px' }}>
+                  {formatPlayTime(profile.playTime || 0)}
+                </span>
               </div>
             </div>
           </div>

@@ -12,6 +12,7 @@ export default function Home() {
     name: '',
     level: 1,
     deaths: 0,
+    playTime: 0,
     hasPlayed: false,
   });
   const [isInitializing, setIsInitializing] = useState(true);
@@ -19,6 +20,7 @@ export default function Home() {
   // Thông số khởi chạy màn chơi
   const [targetLevel, setTargetLevel] = useState<number>(1);
   const [targetDeaths, setTargetDeaths] = useState<number>(0);
+  const [targetPlayTime, setTargetPlayTime] = useState<number>(0);
   const [targetName, setTargetName] = useState<string>('');
 
   const refreshProfile = useCallback(async () => {
@@ -37,9 +39,10 @@ export default function Home() {
     })();
   }, [refreshProfile]);
 
-  const handleStartGame = (level: number, deaths: number, name: string) => {
+  const handleStartGame = (level: number, deaths: number, playTime: number, name: string) => {
     setTargetLevel(level || 1);
     setTargetDeaths(deaths || 0);
+    setTargetPlayTime(playTime || 0);
     setTargetName(name || '');
     setScreen('game');
   };
@@ -71,6 +74,7 @@ export default function Home() {
         <GameCanvas
           initialLevel={targetLevel}
           initialDeaths={targetDeaths}
+          initialPlayTime={targetPlayTime}
           playerName={targetName}
           onBackToHome={handleBackToHome}
         />

@@ -6,12 +6,14 @@ import {
   setPlayerName,
   savePlayerProgress,
   registerOrFindPlayer,
+  formatPlayTime,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
 
 interface GameCanvasProps {
   initialLevel?: number;
   initialDeaths?: number;
+  initialPlayTime?: number;
   playerName?: string;
   onBackToHome?: () => void;
 }
@@ -21,12 +23,13 @@ interface GameCanvasProps {
 function createGameEngine(
   canvas: HTMLCanvasElement,
   callbacks: {
-    onDie: (lv: number, deaths: number) => void;
-    onLevelUp: (lv: number, deaths: number) => void;
-    onWin: (deaths: number) => void;
+    onDie: (lv: number, deaths: number, playTime: number) => void;
+    onLevelUp: (lv: number, deaths: number, playTime: number) => void;
+    onWin: (deaths: number, playTime: number) => void;
   },
   startLevel = 1,
-  startDeaths = 0
+  startDeaths = 0,
+  startPlayTime = 0
 ) {
   const x = canvas.getContext('2d')!;
   const W = 800, H = 450;
@@ -47,6 +50,7 @@ function createGameEngine(
   let L: any,
     lv = Math.max(0, Math.min((startLevel || 1) - 1, 49)),
     deaths = Math.max(0, startDeaths || 0),
+    playTime = Math.max(0, startPlayTime || 0),
     keys: Record<string, number> = {},
     pl: any;
   let fx_: any[] = [], st = 'play', tm = 0, msg = '';
@@ -116,7 +120,7 @@ function createGameEngine(
     if (st !== 'play') return;
     st = 'dead'; tm = 50; deaths++;
     msg = trolls[Math.random() * trolls.length | 0];
-    callbacks.onDie(lv, deaths);
+    callbacks.onDie(lv, deaths, Math.floor(playTime));
     for (let i = 0; i < 18; i++)
       fx_.push({ x: pl.x + 8, y: pl.y + 17, vx: (Math.random() - .5) * 9, vy: -Math.random() * 8, r: 2 + Math.random() * 3 });
   }
@@ -155,9 +159,13 @@ function createGameEngine(
     if (pl.y > H + 40) die();
     if (hit(pl, L.D)) {
       lv++;
-      callbacks.onLevelUp(lv, deaths);
-      if (lv >= LV.length) { st = 'win'; callbacks.onWin(deaths); }
-      else load();
+      callbacks.onLevelUp(lv, deaths, Math.floor(playTime));
+      if (lv >= LV.length) {
+        st = 'win';
+        callbacks.onWin(deaths, Math.floor(playTime));
+      } else {
+        load();
+      }
     }
   }
 
@@ -192,15 +200,18 @@ function createGameEngine(
     x.fillStyle = '#ff5c7a';
     fx_.forEach((f: any) => { x.beginPath(); x.arc(f.x, f.y, f.r, 0, 7); x.fill(); });
     x.fillStyle = '#e8e4f5'; x.font = `700 17px ${FONT}`; x.textAlign = 'left'; x.fillText(L.n, 16, 28);
-    x.textAlign = 'right'; x.font = `400 16px ${FONT}`; x.fillText('Số lần chết: ' + deaths, W - 16, 28);
+    x.textAlign = 'right'; x.font = `400 15px ${FONT}`;
+    x.fillText(`⏱ ${formatPlayTime(Math.floor(playTime))}  ·  Số lần chết: ${deaths}`, W - 16, 28);
     x.textAlign = 'center'; x.globalAlpha = .65; x.font = `400 15px ${FONT}`; x.fillText(L.h, W / 2, 60); x.globalAlpha = 1;
     if (st === 'dead') { x.font = `700 32px ${FONT}`; x.fillText(msg, W / 2, H / 2); }
     if (st === 'win') {
       x.fillStyle = 'rgba(10,8,20,.88)'; x.fillRect(0, 0, W, H); x.fillStyle = '#f5c542';
-      x.font = `700 32px ${FONT}`; x.fillText(`Bạn đã vượt qua cả ${LV.length} màn!`, W / 2, 190);
-      x.fillStyle = '#e8e4f5'; x.font = `400 19px ${FONT}`;
-      x.fillText('Tổng số lần chết: ' + deaths, W / 2, 238);
-      x.fillText('Nhấn Enter hoặc chạm màn hình để chơi lại từ đầu', W / 2, 278);
+      x.font = `700 30px ${FONT}`; x.fillText(`Bạn đã vượt qua cả ${LV.length} màn!`, W / 2, 175);
+      x.fillStyle = '#e8e4f5'; x.font = `400 18px ${FONT}`;
+      x.fillText('Tổng số lần chết: ' + deaths, W / 2, 215);
+      x.fillText('Thời gian hoàn thành: ' + formatPlayTime(Math.floor(playTime)), W / 2, 252);
+      x.font = `400 16px ${FONT}`;
+      x.fillText('Nhấn Enter hoặc chạm màn hình để chơi lại từ đầu', W / 2, 290);
     }
   }
 
@@ -220,7 +231,15 @@ function createGameEngine(
 
   load();
   let last = 0, acc = 0, rafId = 0;
+  let lastTime = performance.now();
+
   function loop(t: number) {
+    const dt = Math.min((t - lastTime) / 1000, 0.1);
+    lastTime = t;
+    if (st === 'play') {
+      playTime += dt;
+    }
+
     acc += Math.min(t - last, 100); last = t;
     while (acc >= 16.67) { upd(); acc -= 16.67; }
     draw();
@@ -231,14 +250,16 @@ function createGameEngine(
   return {
     get lv() { return lv; },
     get deaths() { return deaths; },
+    get playTime() { return Math.floor(playTime); },
     get st() { return st; },
     pressKey(k: string) { keys[k] = 1; },
     releaseKey(k: string) { delete keys[k]; },
     clearKeys() { keys = {}; },
-    restart() { lv = 0; deaths = 0; load(); },
-    restartFrom(level: number, savedDeaths: number) {
+    restart() { lv = 0; deaths = 0; playTime = 0; load(); },
+    restartFrom(level: number, savedDeaths: number, savedPlayTime = 0) {
       lv = Math.max(0, Math.min(level - 1, LV.length - 1));
       deaths = savedDeaths;
+      playTime = savedPlayTime;
       load();
     },
     destroy() { cancelAnimationFrame(rafId); },
@@ -250,6 +271,7 @@ function createGameEngine(
 export default function GameCanvas({
   initialLevel = 1,
   initialDeaths = 0,
+  initialPlayTime = 0,
   playerName: initialPlayerName = '',
   onBackToHome,
 }: GameCanvasProps) {
@@ -270,12 +292,12 @@ export default function GameCanvas({
   }, []);
 
   const handleSave = useCallback(
-    async (lv: number, deaths: number, immediate = false) => {
+    async (lv: number, deaths: number, playTime: number, immediate = false) => {
       const currentName = getPlayerName();
       if (!currentName) return;
       updateSync('Đang lưu...', 'saving');
       try {
-        await savePlayerProgress(lv, deaths, immediate);
+        await savePlayerProgress(lv, deaths, playTime, immediate);
         updateSync('Đã đồng bộ ✓', 'success');
       } catch {
         updateSync('Lỗi lưu', 'error');
@@ -284,7 +306,7 @@ export default function GameCanvas({
     [updateSync]
   );
 
-  // Khởi chạy game engine tại đúng initialLevel và initialDeaths
+  // Khởi chạy game engine tại đúng initialLevel, initialDeaths và initialPlayTime
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -292,12 +314,13 @@ export default function GameCanvas({
     const engine = createGameEngine(
       canvas,
       {
-        onDie: (lv, deaths) => handleSave(lv, deaths, false),
-        onLevelUp: (lv, deaths) => handleSave(lv, deaths, true),
-        onWin: (deaths) => handleSave(49, deaths, true),
+        onDie: (lv, deaths, playTime) => handleSave(lv, deaths, playTime, false),
+        onLevelUp: (lv, deaths, playTime) => handleSave(lv, deaths, playTime, true),
+        onWin: (deaths, playTime) => handleSave(49, deaths, playTime, true),
       },
       initialLevel,
-      initialDeaths
+      initialDeaths,
+      initialPlayTime
     );
     engineRef.current = engine;
 
@@ -313,7 +336,7 @@ export default function GameCanvas({
       engine.pressKey(e.key);
       if (e.key === 'Enter' && engine.st === 'win') {
         engine.restart();
-        handleSave(0, 0, true);
+        handleSave(0, 0, 0, true);
       }
     };
     const onKeyUp = (e: KeyboardEvent) => engine.releaseKey(e.key);
@@ -329,7 +352,7 @@ export default function GameCanvas({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [handleSave, initialLevel, initialDeaths]);
+  }, [handleSave, initialLevel, initialDeaths, initialPlayTime]);
 
   // Mobile pad
   const padPress = useCallback((k: string) => engineRef.current?.pressKey(k), []);
@@ -345,7 +368,12 @@ export default function GameCanvas({
     setPlayerName(res.name);
     setPlayerNameState(res.name);
     setShowNameModal(false);
-    handleSave(engineRef.current?.lv ?? 0, engineRef.current?.deaths ?? 0, true);
+    handleSave(
+      engineRef.current?.lv ?? 0,
+      engineRef.current?.deaths ?? 0,
+      engineRef.current?.playTime ?? 0,
+      true
+    );
   };
 
   const syncColor: Record<string, string> = {
@@ -402,7 +430,7 @@ export default function GameCanvas({
         onPointerDown={() => {
           if (engineRef.current?.st === 'win') {
             engineRef.current.restart();
-            handleSave(0, 0, true);
+            handleSave(0, 0, 0, true);
           }
         }}
       />

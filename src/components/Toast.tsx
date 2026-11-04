@@ -3,8 +3,8 @@
 interface ToastProps {
   title: string;
   message: string;
-  localData?: { level: number; deaths: number; name: string };
-  serverData?: { level: number; deaths: number; name: string };
+  localData?: { level: number; deaths: number; playTime?: number; name: string };
+  serverData?: { level: number; deaths: number; playTime?: number; name: string };
   onSyncServer?: () => void;
   onClose: () => void;
 }
@@ -70,4 +70,3 @@ export default function Toast({
     </div>
   );
 }
-

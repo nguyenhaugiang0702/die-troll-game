@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchLeaderboard, type Player } from '@/lib/supabase';
+import { fetchLeaderboard, formatPlayTime, type Player } from '@/lib/supabase';
 
 interface LeaderboardModalProps {
   currentPlayerName?: string;
@@ -40,7 +40,7 @@ export default function LeaderboardModal({
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-card"
-        style={{ maxWidth: 540 }}
+        style={{ maxWidth: 620 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -58,7 +58,7 @@ export default function LeaderboardModal({
         </div>
 
         <p className="modal-desc" style={{ textAlign: 'left', marginBottom: 12 }}>
-          Xếp hạng theo màn cao nhất vượt qua & ít lần chết nhất.
+          Xếp hạng theo màn cao nhất vượt qua, ít lần chết nhất & tốc độ nhanh nhất.
         </p>
 
         <div id="lb-content" style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -71,10 +71,11 @@ export default function LeaderboardModal({
             <table className="lb-table">
               <thead>
                 <tr>
-                  <th style={{ width: 55 }}>Hạng</th>
+                  <th style={{ width: 50 }}>Hạng</th>
                   <th>Người chơi</th>
                   <th style={{ textAlign: 'center' }}>Màn</th>
-                  <th style={{ textAlign: 'right' }}>Số lần chết</th>
+                  <th style={{ textAlign: 'center' }}>Số lần chết</th>
+                  <th style={{ textAlign: 'right' }}>Thời gian</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,7 +101,10 @@ export default function LeaderboardModal({
                       <td style={{ textAlign: 'center', color: '#f5c542', fontWeight: 600 }}>
                         Màn {item.level || 1}
                       </td>
-                      <td style={{ textAlign: 'right' }}>{item.deaths || 0} lần</td>
+                      <td style={{ textAlign: 'center' }}>{item.deaths || 0} lần</td>
+                      <td style={{ textAlign: 'right', color: '#a79aff', fontSize: '13px' }}>
+                        {formatPlayTime(item.play_time || 0)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -118,4 +122,3 @@ export default function LeaderboardModal({
     </div>
   );
 }
-

@@ -18,6 +18,7 @@ export interface Player {
   name: string;
   level: number;
   deaths: number;
+  play_time?: number; // thời gian chơi/hoàn thành tính bằng giây (seconds)
   updated_at?: string;
 }
 
@@ -26,6 +27,7 @@ export interface PlayerProfile {
   name: string;
   level: number;
   deaths: number;
+  playTime: number; // tính bằng giây
   hasPlayed: boolean;
 }
 
@@ -33,8 +35,26 @@ export interface VerifyResult {
   isMatch: boolean;
   isNewUser: boolean;
   message?: string;
-  localData?: { level: number; deaths: number; name: string };
-  serverData?: { level: number; deaths: number; name: string };
+  localData?: { level: number; deaths: number; playTime: number; name: string };
+  serverData?: { level: number; deaths: number; playTime: number; name: string };
+}
+
+// ─── Format thời gian: Giây -> Giờ / Phút / Giây ─────────────────────────────
+
+export function formatPlayTime(totalSeconds: number): string {
+  const sec = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  if (sec === 0) return '0 giây';
+
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours} giờ`);
+  if (minutes > 0) parts.push(`${minutes} phút`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds} giây`);
+
+  return parts.join(' ');
 }
 
 // ─── Player Identity & Local Persistence ─────────────────────────────────────
@@ -63,19 +83,28 @@ export function setPlayerName(name: string): string {
   return trimmed;
 }
 
-export function getLocalProgress(): { level: number; deaths: number; name: string } {
-  if (typeof localStorage === 'undefined') return { level: 1, deaths: 0, name: '' };
+export function getLocalProgress(): {
+  level: number;
+  deaths: number;
+  playTime: number;
+  name: string;
+} {
+  if (typeof localStorage === 'undefined') return { level: 1, deaths: 0, playTime: 0, name: '' };
   return {
     level: Math.max(1, parseInt(localStorage.getItem('puppet_last_level') || '1', 10)),
     deaths: Math.max(0, parseInt(localStorage.getItem('puppet_last_deaths') || '0', 10)),
+    playTime: Math.max(0, parseInt(localStorage.getItem('puppet_last_play_time') || '0', 10)),
     name: localStorage.getItem('puppet_player_name') || '',
   };
 }
 
-export function setLocalProgress(level: number, deaths: number): void {
+export function setLocalProgress(level: number, deaths: number, playTime?: number): void {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('puppet_last_level', String(level));
     localStorage.setItem('puppet_last_deaths', String(deaths));
+    if (playTime !== undefined) {
+      localStorage.setItem('puppet_last_play_time', String(Math.floor(playTime)));
+    }
   }
 }
 
@@ -85,6 +114,7 @@ export function clearPlayerSession(): void {
     localStorage.removeItem('puppet_player_name');
     localStorage.removeItem('puppet_last_level');
     localStorage.removeItem('puppet_last_deaths');
+    localStorage.removeItem('puppet_last_play_time');
   }
 }
 
@@ -109,12 +139,14 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
         if (data.name !== trimmed) {
           await supabase.from('players').update({ name: trimmed }).eq('id', localId);
         }
-        setLocalProgress(data.level || 1, data.deaths || 0);
+        const timeVal = data.play_time || 0;
+        setLocalProgress(data.level || 1, data.deaths || 0, timeVal);
         return {
           id: String(data.id),
           name: trimmed,
           level: data.level || 1,
           deaths: data.deaths || 0,
+          playTime: timeVal,
           hasPlayed: true,
         };
       }
@@ -134,13 +166,15 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
       .maybeSingle();
 
     if (existing && !error) {
+      const timeVal = existing.play_time || 0;
       setPlayerId(existing.id);
-      setLocalProgress(existing.level || 1, existing.deaths || 0);
+      setLocalProgress(existing.level || 1, existing.deaths || 0, timeVal);
       return {
         id: String(existing.id),
         name: existing.name,
         level: existing.level || 1,
         deaths: existing.deaths || 0,
+        playTime: timeVal,
         hasPlayed: true,
       };
     }
@@ -153,6 +187,7 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
     name: trimmed,
     level: 1,
     deaths: 0,
+    play_time: 0,
     updated_at: new Date().toISOString(),
   };
 
@@ -167,12 +202,13 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
       console.error('[Supabase] Lỗi tạo người chơi mới:', error.message);
     } else if (data) {
       setPlayerId(data.id);
-      setLocalProgress(data.level || 1, data.deaths || 0);
+      setLocalProgress(data.level || 1, data.deaths || 0, 0);
       return {
         id: String(data.id),
         name: data.name,
         level: data.level || 1,
         deaths: data.deaths || 0,
+        playTime: 0,
         hasPlayed: true,
       };
     }
@@ -181,12 +217,13 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
   }
 
   // Fallback nếu không có mạng
-  setLocalProgress(1, 0);
+  setLocalProgress(1, 0, 0);
   return {
     id: '',
     name: trimmed,
     level: 1,
     deaths: 0,
+    playTime: 0,
     hasPlayed: true,
   };
 }
@@ -198,13 +235,15 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 export async function savePlayerProgress(
   level: number,
   deaths: number,
+  playTime = 0,
   immediate = false
 ): Promise<void> {
   const name = getPlayerName();
   if (!name) return;
 
   const targetLevel = Math.max(1, level + 1); // 1-based level
-  setLocalProgress(targetLevel, deaths);
+  const targetPlayTime = Math.max(0, Math.floor(playTime));
+  setLocalProgress(targetLevel, deaths, targetPlayTime);
 
   const doSave = async () => {
     const id = getPlayerId();
@@ -212,6 +251,7 @@ export async function savePlayerProgress(
       name,
       level: targetLevel,
       deaths,
+      play_time: targetPlayTime,
       updated_at: new Date().toISOString(),
     };
 
@@ -266,6 +306,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     name: local.name,
     level: local.level,
     deaths: local.deaths,
+    playTime: local.playTime,
     hasPlayed: Boolean(id || local.name),
   };
 
@@ -273,17 +314,17 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, level, deaths')
+        .select('id, name, level, deaths, play_time')
         .eq('id', id)
         .maybeSingle();
 
       if (data && !error) {
-        // Không tự động ghi đè local ở đây để cho phép phát hiện sai lệch khi user can thiệp local
         return {
           id: String(data.id),
           name: data.name || local.name,
           level: data.level || 1,
           deaths: data.deaths || 0,
+          playTime: data.play_time || local.playTime || 0,
           hasPlayed: true,
         };
       }
@@ -296,7 +337,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, level, deaths')
+        .select('id, name, level, deaths, play_time')
         .ilike('name', local.name)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -309,6 +350,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
           name: data.name,
           level: data.level || 1,
           deaths: data.deaths || 0,
+          playTime: data.play_time || local.playTime || 0,
           hasPlayed: true,
         };
       }
@@ -361,14 +403,24 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
           isNewUser: false,
           message: 'Tiến trình trên máy không khớp với dữ liệu trên máy chủ.',
           localData: local,
-          serverData: { level: data.level, deaths: data.deaths, name: data.name },
+          serverData: {
+            level: data.level,
+            deaths: data.deaths,
+            playTime: data.play_time || 0,
+            name: data.name,
+          },
         };
       }
 
       return {
         isMatch: true,
         isNewUser: false,
-        serverData: { level: data.level, deaths: data.deaths, name: data.name },
+        serverData: {
+          level: data.level,
+          deaths: data.deaths,
+          playTime: data.play_time || 0,
+          name: data.name,
+        },
       };
     } catch {
       return {
@@ -384,7 +436,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
   try {
     const { data, error } = await supabase
       .from('players')
-      .select('id, name, level, deaths')
+      .select('id, name, level, deaths, play_time')
       .eq('id', localId)
       .maybeSingle();
 
@@ -420,6 +472,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
         serverData: {
           level: data.level,
           deaths: data.deaths,
+          playTime: data.play_time || 0,
           name: data.name,
         },
       };
@@ -431,6 +484,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
       serverData: {
         level: data.level,
         deaths: data.deaths,
+        playTime: data.play_time || 0,
         name: data.name,
       },
     };
@@ -447,9 +501,14 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
 
 // ─── Đồng bộ Local theo Server ────────────────────────────────────────────────
 
-export function syncLocalWithServer(serverData: { level: number; deaths: number; name: string }): void {
+export function syncLocalWithServer(serverData: {
+  level: number;
+  deaths: number;
+  playTime?: number;
+  name: string;
+}): void {
   setPlayerName(serverData.name);
-  setLocalProgress(serverData.level, serverData.deaths);
+  setLocalProgress(serverData.level, serverData.deaths, serverData.playTime);
 }
 
 // ─── Bảng xếp hạng ───────────────────────────────────────────────────────────
@@ -460,10 +519,10 @@ export async function fetchLeaderboard(): Promise<
   try {
     const { data, error } = await supabase
       .from('players')
-      .select('id, name, level, deaths, updated_at')
+      .select('id, name, level, deaths, play_time, updated_at')
       .order('level', { ascending: false })
       .order('deaths', { ascending: true })
-      .order('updated_at', { ascending: true })
+      .order('play_time', { ascending: true })
       .limit(30);
 
     if (error) throw error;
