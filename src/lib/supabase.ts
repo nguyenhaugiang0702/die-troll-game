@@ -115,6 +115,7 @@ export function clearPlayerSession(): void {
     localStorage.removeItem('puppet_last_level');
     localStorage.removeItem('puppet_last_deaths');
     localStorage.removeItem('puppet_last_play_time');
+    localStorage.removeItem('puppet_active_screen');
   }
 }
 
@@ -388,8 +389,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
         return {
           isMatch: false,
           isNewUser: false,
-          message: 'Không tìm thấy người chơi này trên máy chủ!',
-          localData: local,
+          message: 'Dữ liệu tài khoản không hợp lệ hoặc không tìm thấy trên hệ thống.',
         };
       }
 
@@ -401,8 +401,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
         return {
           isMatch: false,
           isNewUser: false,
-          message: 'Tiến trình trên máy không khớp với dữ liệu trên máy chủ.',
-          localData: local,
+          message: 'Dữ liệu trò chơi không đồng bộ hoặc đã bị thay đổi. Vui lòng đồng bộ lại để tiếp tục.',
           serverData: {
             level: data.level,
             deaths: data.deaths,
@@ -426,8 +425,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
       return {
         isMatch: false,
         isNewUser: false,
-        message: 'Lỗi mạng: Không thể kết nối với máy chủ để kiểm tra dữ liệu.',
-        localData: local,
+        message: 'Lỗi kết nối máy chủ. Vui lòng thử lại sau.',
       };
     }
   }
@@ -440,21 +438,11 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
       .eq('id', localId)
       .maybeSingle();
 
-    if (error) {
+    if (error || !data) {
       return {
         isMatch: false,
         isNewUser: false,
-        message: `ID người chơi không hợp lệ (${error.message}). Có thể dữ liệu lưu trữ đã bị sửa đổi.`,
-        localData: local,
-      };
-    }
-
-    if (!data) {
-      return {
-        isMatch: false,
-        isNewUser: false,
-        message: 'Không tìm thấy người chơi trên máy chủ. ID trên máy có thể đã bị sửa.',
-        localData: local,
+        message: 'Dữ liệu tài khoản không hợp lệ hoặc đã bị thay đổi. Vui lòng thử lại.',
       };
     }
 
@@ -467,8 +455,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
       return {
         isMatch: false,
         isNewUser: false,
-        message: 'Dữ liệu lưu trên máy (Local) không khớp với dữ liệu trên máy chủ (Server)!',
-        localData: local,
+        message: 'Dữ liệu trò chơi không đồng bộ hoặc đã bị thay đổi. Vui lòng đồng bộ lại để tiếp tục.',
         serverData: {
           level: data.level,
           deaths: data.deaths,
@@ -489,12 +476,10 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
       },
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Lỗi kết nối';
     return {
       isMatch: false,
       isNewUser: false,
-      message: `Không thể kết nối đến máy chủ: ${msg}`,
-      localData: local,
+      message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.',
     };
   }
 }

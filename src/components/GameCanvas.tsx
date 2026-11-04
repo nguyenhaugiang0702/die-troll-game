@@ -342,15 +342,24 @@ export default function GameCanvas({
     const onKeyUp = (e: KeyboardEvent) => engine.releaseKey(e.key);
     const onBlur = () => engine.clearKeys();
 
+    // Lưu tiến trình thời gian thực khi F5 hoặc đóng tab
+    const onBeforeUnload = () => {
+      if (engine && getPlayerName()) {
+        savePlayerProgress(engine.lv, engine.deaths, engine.playTime, true);
+      }
+    };
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+    window.addEventListener('beforeunload', onBeforeUnload);
 
     return () => {
       engine.destroy();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [handleSave, initialLevel, initialDeaths, initialPlayTime]);
 

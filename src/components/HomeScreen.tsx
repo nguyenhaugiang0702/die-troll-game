@@ -15,7 +15,7 @@ import Toast from './Toast';
 interface HomeScreenProps {
   profile: PlayerProfile;
   onStartGame: (level: number, deaths: number, playTime: number, name: string) => void;
-  onRefreshProfile: () => Promise<void>;
+  onRefreshProfile: () => Promise<any>;
 }
 
 export default function HomeScreen({
@@ -34,7 +34,6 @@ export default function HomeScreen({
   const [toastData, setToastData] = useState<{
     title: string;
     message: string;
-    localData?: { level: number; deaths: number; playTime: number; name: string };
     serverData?: { level: number; deaths: number; playTime: number; name: string };
   } | null>(null);
 
@@ -60,14 +59,13 @@ export default function HomeScreen({
       return;
     }
 
-    // Nếu KHÔNG MATCH: Chặn vào game và hiện Toast cảnh báo lỗi
+    // Nếu KHÔNG MATCH: Chặn vào game và hiện Toast cảnh báo chung
     if (!check.isMatch) {
       setToastData({
-        title: 'Phát hiện sai lệch dữ liệu!',
+        title: 'Lỗi đồng bộ dữ liệu',
         message:
           check.message ||
-          'Dữ liệu lưu trên máy (Local) không khớp với dữ liệu trên máy chủ (Server). Vui lòng đồng bộ lại!',
-        localData: check.localData,
+          'Dữ liệu trò chơi không đồng bộ hoặc đã bị thay đổi. Vui lòng đồng bộ lại để tiếp tục.',
         serverData: check.serverData,
       });
       return;
@@ -127,13 +125,11 @@ export default function HomeScreen({
 
   return (
     <div className="home-container">
-      {/* Toast thông báo lỗi không khớp */}
+      {/* Toast thông báo lỗi */}
       {toastData && (
         <Toast
           title={toastData.title}
           message={toastData.message}
-          localData={toastData.localData}
-          serverData={toastData.serverData}
           onSyncServer={toastData.serverData ? handleSyncServer : undefined}
           onClose={() => setToastData(null)}
         />

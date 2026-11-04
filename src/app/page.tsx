@@ -27,19 +27,40 @@ export default function Home() {
     try {
       const p = await loadPlayerProgress();
       setProfile(p);
+      return p;
     } catch (e) {
       console.warn('Lỗi khi tải profile:', e);
+      return null;
     }
   }, []);
 
   useEffect(() => {
     (async () => {
-      await refreshProfile();
+      const p = await refreshProfile();
+      // Kiểm tra trạng thái màn hình trước khi F5
+      const savedScreen =
+        typeof localStorage !== 'undefined'
+          ? localStorage.getItem('puppet_active_screen')
+          : null;
+
+      // Nếu trước đó đang chơi (savedScreen === 'game') và đã có tài khoản
+      if (savedScreen === 'game' && p && p.hasPlayed && p.name) {
+        setTargetLevel(p.level || 1);
+        setTargetDeaths(p.deaths || 0);
+        setTargetPlayTime(p.playTime || 0);
+        setTargetName(p.name);
+        setScreen('game');
+      } else {
+        setScreen('home');
+      }
       setIsInitializing(false);
     })();
   }, [refreshProfile]);
 
   const handleStartGame = (level: number, deaths: number, playTime: number, name: string) => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('puppet_active_screen', 'game');
+    }
     setTargetLevel(level || 1);
     setTargetDeaths(deaths || 0);
     setTargetPlayTime(playTime || 0);
@@ -48,6 +69,9 @@ export default function Home() {
   };
 
   const handleBackToHome = async () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('puppet_active_screen', 'home');
+    }
     await refreshProfile();
     setScreen('home');
   };

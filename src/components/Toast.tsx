@@ -3,8 +3,6 @@
 interface ToastProps {
   title: string;
   message: string;
-  localData?: { level: number; deaths: number; playTime?: number; name: string };
-  serverData?: { level: number; deaths: number; playTime?: number; name: string };
   onSyncServer?: () => void;
   onClose: () => void;
 }
@@ -12,8 +10,6 @@ interface ToastProps {
 export default function Toast({
   title,
   message,
-  localData,
-  serverData,
   onSyncServer,
   onClose,
 }: ToastProps) {
@@ -37,32 +33,13 @@ export default function Toast({
 
         <p className="toast-body">{message}</p>
 
-        {localData && serverData && (
-          <div className="toast-diff-box">
-            <div className="toast-diff-row">
-              <span className="diff-label">Dữ liệu trên máy (Local):</span>
-              <span className="diff-val-local">
-                Màn {localData.level} · {localData.deaths} lần chết
-                {localData.name !== serverData.name ? ` (${localData.name})` : ''}
-              </span>
-            </div>
-            <div className="toast-diff-row">
-              <span className="diff-label">Dữ liệu máy chủ (Server):</span>
-              <span className="diff-val-server">
-                Màn {serverData.level} · {serverData.deaths} lần chết
-                {localData.name !== serverData.name ? ` (${serverData.name})` : ''}
-              </span>
-            </div>
-          </div>
-        )}
-
         <div className="toast-actions">
           <button className="btn-toast-dismiss" onClick={onClose}>
-            Bỏ qua
+            Đóng
           </button>
-          {serverData && onSyncServer && (
+          {onSyncServer && (
             <button className="btn-toast-action" onClick={onSyncServer}>
-              🔄 Khôi phục theo Server
+              🔄 Đồng bộ lại dữ liệu
             </button>
           )}
         </div>
