@@ -9,12 +9,12 @@ import {
   savePlayerProgress,
   registerOrFindPlayer,
   formatPlayTime,
-  processAvatarImage,
   AVATAR_LIST,
   DEFAULT_AVATAR,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
 import AvatarDisplay from './AvatarDisplay';
+import Toast from './Toast';
 
 interface GameCanvasProps {
   initialLevel?: number;
@@ -60,7 +60,12 @@ function createGameEngine(
     keys: Record<string, number> = {},
     pl: any;
   let fx_: any[] = [], st = 'play', tm = 0, msg = '';
-  const trolls = ['Ối!', 'Lại nữa à?', 'Tin tưởng làm gì...', 'Cố lên nào!', 'Rối đứt dây rồi', 'Tưởng dễ à? :)', 'Gần được rồi... là nói dối'];
+  const trolls = ['Ối!', 'Lại nữa à?', 'Tin tưởng làm gì...', 'Cố lên nào!', 'Rối đứt dây rồi', 'Tưởng dễ à? :)', 'Gần được rồi... là nói dối',
+    'Bạn vừa làm gì vậy?', 'Gai: 1 - Bạn: 0', 'Đừng nản, mới chết có mấy lần thôi', 'Nhìn kỹ lại đi nào',
+    'Ai bảo tin cái bẫy đó?', 'Thử lại lần nữa nhé :)', 'Tay hay là mạng đây?', 'Chết đẹp đấy!',
+    'Game này không cho bạn dễ vậy đâu', 'Bình tĩnh... hít thở...', 'Chắc do lag thôi nhỉ?',
+    'Đã bảo là có bẫy mà', 'Nghỉ tay uống nước đi', 'Sắp qua rồi... có thể vậy', 'RIP bạn tôi',
+    'Hay là bỏ cuộc nhé? Đùa thôi', 'Gai nhớ bạn lắm đó', 'Mắt để làm cảnh à?', 'Lại một cú ngã nghệ thuật'];
 
   // prettier-ignore
   const LV: Array<() => any> = [
@@ -294,6 +299,7 @@ export default function GameCanvas({
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false);
 
   const updateSync = useCallback((text: string, type: string) => {
     setSyncStatus({ text, type });
@@ -375,16 +381,11 @@ export default function GameCanvas({
   const padPress = useCallback((k: string) => engineRef.current?.pressKey(k), []);
   const padRelease = useCallback((k: string) => engineRef.current?.releaseKey(k), []);
 
-  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await processAvatarImage(file);
-      setSelectedAvatar(dataUrl);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi xử lý hình ảnh';
-      alert(msg);
-    }
+  // Chơi lại từ đầu: đưa tiến trình về màn 1, 0 lần chết, 0 giây và lưu lại
+  const handleRestartAll = () => {
+    setShowRestartConfirm(false);
+    engineRef.current?.restart();
+    handleSave(0, 0, 0, true);
   };
 
   const handleSaveName = async () => {
@@ -418,7 +419,7 @@ export default function GameCanvas({
     <div className="game-wrapper">
       {/* Top bar */}
       <div className="top-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="top-left">
           {onBackToHome && (
             <button
               className="btn-back-home"
@@ -449,10 +450,26 @@ export default function GameCanvas({
           </div>
         </div>
 
-        <button className="btn-action" onClick={() => setShowLeaderboard(true)}>
-          🏆 Bảng Xếp Hạng
-        </button>
+        <div className="top-right">
+          <button className="btn-action" onClick={() => setShowRestartConfirm(true)}>
+            🔁 Chơi lại từ đầu
+          </button>
+          <button className="btn-action" onClick={() => setShowLeaderboard(true)}>
+            🏆 Bảng Xếp Hạng
+          </button>
+        </div>
       </div>
+
+      {showRestartConfirm && (
+        <Toast
+          title="Chơi lại từ đầu?"
+          message="Toàn bộ tiến trình hiện tại (màn chơi, số lần chết, thời gian) sẽ bị xóa và bạn bắt đầu lại từ Màn 1."
+          closeLabel="Hủy"
+          confirmLabel="🔁 Chơi lại"
+          onConfirm={handleRestartAll}
+          onClose={() => setShowRestartConfirm(false)}
+        />
+      )}
 
       {/* Canvas */}
       <canvas
@@ -520,18 +537,6 @@ export default function GameCanvas({
             <div className="avatar-preview-box">
               <div className="avatar-preview-circle">
                 <AvatarDisplay avatar={selectedAvatar} size={56} />
-              </div>
-              <div className="avatar-upload-cta">
-                <label className="btn-upload-avatar">
-                  📷 Tải ảnh từ máy
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleAvatarFileUpload}
-                  />
-                </label>
-                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
               </div>
             </div>
 

@@ -7,7 +7,6 @@ import {
   verifyLocalWithServer,
   syncLocalWithServer,
   formatPlayTime,
-  processAvatarImage,
   AVATAR_LIST,
   DEFAULT_AVATAR,
   type PlayerProfile,
@@ -15,6 +14,7 @@ import {
 import LeaderboardModal from './LeaderboardModal';
 import Toast from './Toast';
 import AvatarDisplay from './AvatarDisplay';
+import { enterLandscape, exitLandscape } from '@/lib/landscape';
 
 interface HomeScreenProps {
   profile: PlayerProfile;
@@ -54,7 +54,8 @@ export default function HomeScreen({
       return;
     }
 
-    // Đã từng chơi: Tiến hành đối soát LocalStorage với Server trước khi cho vào chơi
+    // Đã từng chơi: xoay ngang ngay trong thao tác nhấn, rồi đối soát LocalStorage với Server
+    void enterLandscape();
     setIsCheckingMatch(true);
     setToastData(null);
 
@@ -62,12 +63,14 @@ export default function HomeScreen({
     setIsCheckingMatch(false);
 
     if (check.isNewUser) {
+      void exitLandscape();
       setShowNameModal(true);
       return;
     }
 
     // Nếu KHÔNG MATCH: Chặn vào game và hiện Toast cảnh báo chung
     if (!check.isMatch) {
+      void exitLandscape();
       setToastData({
         title: 'Lỗi đồng bộ dữ liệu',
         message:
@@ -86,19 +89,6 @@ export default function HomeScreen({
     onStartGame(finalLevel, finalDeaths, finalPlayTime, finalName);
   };
 
-  // Upload ảnh avatar từ thiết bị
-  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await processAvatarImage(file);
-      setSelectedAvatar(dataUrl);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi xử lý hình ảnh';
-      alert(msg);
-    }
-  };
-
   // Xác nhận tạo người chơi mới
   const handleConfirmName = async () => {
     const trimmed = nameInput.trim();
@@ -111,6 +101,7 @@ export default function HomeScreen({
       return;
     }
 
+    void enterLandscape();
     try {
       setIsSubmitting(true);
       setNameError('');
@@ -121,6 +112,7 @@ export default function HomeScreen({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
       setNameError(msg);
+      void exitLandscape();
     } finally {
       setIsSubmitting(false);
     }
@@ -323,18 +315,6 @@ export default function HomeScreen({
               <div className="avatar-preview-circle">
                 <AvatarDisplay avatar={selectedAvatar} size={56} />
               </div>
-              <div className="avatar-upload-cta">
-                <label className="btn-upload-avatar">
-                  📷 Tải ảnh từ máy
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleAvatarFileUpload}
-                  />
-                </label>
-                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
-              </div>
             </div>
 
             {/* Quick Presets */}
@@ -408,18 +388,6 @@ export default function HomeScreen({
             <div className="avatar-preview-box">
               <div className="avatar-preview-circle">
                 <AvatarDisplay avatar={selectedAvatar} size={56} />
-              </div>
-              <div className="avatar-upload-cta">
-                <label className="btn-upload-avatar">
-                  📷 Tải ảnh từ máy
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleAvatarFileUpload}
-                  />
-                </label>
-                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
               </div>
             </div>
 

@@ -4,6 +4,9 @@ interface ToastProps {
   title: string;
   message: string;
   onSyncServer?: () => void;
+  onConfirm?: () => void;
+  confirmLabel?: string;
+  closeLabel?: string;
   onClose: () => void;
 }
 
@@ -11,6 +14,9 @@ export default function Toast({
   title,
   message,
   onSyncServer,
+  onConfirm,
+  confirmLabel = 'Xác nhận',
+  closeLabel = 'Đóng',
   onClose,
 }: ToastProps) {
   return (
@@ -35,8 +41,13 @@ export default function Toast({
 
         <div className="toast-actions">
           <button className="btn-toast-dismiss" onClick={onClose}>
-            Đóng
+            {closeLabel}
           </button>
+          {onConfirm && (
+            <button className="btn-toast-action" onClick={onConfirm}>
+              {confirmLabel}
+            </button>
+          )}
           {onSyncServer && (
             <button className="btn-toast-action" onClick={onSyncServer}>
               🔄 Đồng bộ lại dữ liệu

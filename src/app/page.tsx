@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import HomeScreen from '@/components/HomeScreen';
 import GameCanvas from '@/components/GameCanvas';
 import { loadPlayerProgress, type PlayerProfile } from '@/lib/supabase';
+import { exitLandscape } from '@/lib/landscape';
 
 export default function Home() {
   const [screen, setScreen] = useState<'home' | 'game'>('home');
@@ -58,6 +59,12 @@ export default function Home() {
     })();
   }, [refreshProfile]);
 
+  // Ở màn chơi: bật CSS xoay ngang dự phòng (khi trình duyệt không khóa được hướng)
+  useEffect(() => {
+    document.documentElement.classList.toggle('force-landscape', screen === 'game');
+    return () => document.documentElement.classList.remove('force-landscape');
+  }, [screen]);
+
   const handleStartGame = (level: number, deaths: number, playTime: number, name: string) => {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('puppet_active_screen', 'game');
@@ -73,6 +80,7 @@ export default function Home() {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('puppet_active_screen', 'home');
     }
+    void exitLandscape();
     await refreshProfile();
     setScreen('home');
   };
