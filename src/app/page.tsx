@@ -10,6 +10,7 @@ export default function Home() {
   const [profile, setProfile] = useState<PlayerProfile>({
     id: '',
     name: '',
+    avatar: '🎭',
     level: 1,
     deaths: 0,
     playTime: 0,

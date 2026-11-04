@@ -337,16 +337,139 @@ p.hint {
   gap: 10px;
 }
 
-.profile-avatar {
-  font-size: 22px;
+.profile-avatar,
+.profile-avatar-btn {
+  font-size: 24px;
   background: #2a2247;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #5a4fa8;
+  border: 1.5px solid #5a4fa8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.profile-avatar-btn:hover {
+  background: #372b5c;
+  border-color: #f5c542;
+  box-shadow: 0 0 12px rgba(245, 197, 66, 0.4);
+  transform: scale(1.08);
+}
+
+/* Avatar Preview & Upload Area */
+.avatar-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #171224;
+  border: 1.5px dashed #5a4fa8;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.avatar-preview-circle {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  min-height: 60px;
+  border-radius: 50%;
+  border: 2px solid #8a7bff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #251d3b;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.avatar-upload-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.btn-upload-avatar {
+  background: #4b3fb5;
+  color: #fff;
+  border: 1px solid #7365d9;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+  width: fit-content;
+}
+
+.btn-upload-avatar:hover {
+  background: #6253df;
+  border-color: #a79aff;
+  box-shadow: 0 4px 12px rgba(115, 101, 217, 0.35);
+}
+
+.avatar-upload-hint {
+  font-size: 11px;
+  color: #8b80a6;
+}
+
+/* Avatar Selection Grid */
+.avatar-picker-label {
+  font-size: 13px;
+  color: #a89dbf;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 480px) {
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.avatar-option {
+  background: #191426;
+  border: 2px solid #3d3463;
+  border-radius: 10px;
+  font-size: 22px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.avatar-option:hover {
+  background: #2a2247;
+  border-color: #8a7bff;
+  transform: scale(1.1);
+}
+
+.avatar-option.active {
+  background: rgba(138, 123, 255, 0.25);
+  border-color: #f5c542;
+  box-shadow: 0 0 12px rgba(245, 197, 66, 0.45);
+  transform: scale(1.15);
 }
 
 .profile-details {

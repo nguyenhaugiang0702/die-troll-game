@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchLeaderboard, formatPlayTime, type Player } from '@/lib/supabase';
+import AvatarDisplay from './AvatarDisplay';
 
 interface LeaderboardModalProps {
   currentPlayerName?: string;
@@ -87,15 +88,18 @@ export default function LeaderboardModal({
                     idx === 0
                       ? '🥇 1'
                       : idx === 1
-                      ? '🥈 2'
-                      : idx === 2
-                      ? '🥉 3'
-                      : `${idx + 1}`;
+                        ? '🥈 2'
+                        : idx === 2
+                          ? '🥉 3'
+                          : `${idx + 1}`;
                   return (
                     <tr key={item.id || idx} className={isMe ? 'me' : ''}>
                       <td>{rank}</td>
                       <td>
-                        {item.name || 'Ẩn danh'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <AvatarDisplay avatar={item.avatar} size={24} />
+                          <span>{item.name || 'Ẩn danh'}</span>
+                        </span>
                         {isMe && <span style={{ color: '#f5c542', marginLeft: 4 }}>(Bạn)</span>}
                       </td>
                       <td style={{ textAlign: 'center', color: '#f5c542', fontWeight: 600 }}>

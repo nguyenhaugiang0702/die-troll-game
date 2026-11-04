@@ -4,11 +4,17 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import {
   getPlayerName,
   setPlayerName,
+  getPlayerAvatar,
+  setPlayerAvatar,
   savePlayerProgress,
   registerOrFindPlayer,
   formatPlayTime,
+  processAvatarImage,
+  AVATAR_LIST,
+  DEFAULT_AVATAR,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
+import AvatarDisplay from './AvatarDisplay';
 
 interface GameCanvasProps {
   initialLevel?: number;
@@ -279,6 +285,8 @@ export default function GameCanvas({
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null);
 
   const [playerName, setPlayerNameState] = useState(initialPlayerName || getPlayerName());
+  const [playerAvatar, setPlayerAvatarState] = useState(getPlayerAvatar());
+  const [selectedAvatar, setSelectedAvatar] = useState(playerAvatar);
   const [syncStatus, setSyncStatus] = useState<{ text: string; type: string }>({
     text: 'Đã sẵn sàng',
     type: 'success',
@@ -367,15 +375,29 @@ export default function GameCanvas({
   const padPress = useCallback((k: string) => engineRef.current?.pressKey(k), []);
   const padRelease = useCallback((k: string) => engineRef.current?.releaseKey(k), []);
 
+  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processAvatarImage(file);
+      setSelectedAvatar(dataUrl);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xử lý hình ảnh';
+      alert(msg);
+    }
+  };
+
   const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) {
       alert('Vui lòng nhập tên!');
       return;
     }
-    const res = await registerOrFindPlayer(trimmed);
+    const res = await registerOrFindPlayer(trimmed, selectedAvatar);
     setPlayerName(res.name);
     setPlayerNameState(res.name);
+    setPlayerAvatar(res.avatar);
+    setPlayerAvatarState(res.avatar);
     setShowNameModal(false);
     handleSave(
       engineRef.current?.lv ?? 0,
@@ -412,11 +434,14 @@ export default function GameCanvas({
               className="player-tag"
               onClick={() => {
                 setNameInput(playerName);
+                setSelectedAvatar(playerAvatar);
                 setShowNameModal(true);
               }}
-              title="Nhấn để đổi tên"
+              title="Nhấn để đổi tên & avatar"
             >
-              👤 {playerName || 'Chưa đặt tên'} ✎
+              <AvatarDisplay avatar={playerAvatar} size={22} />
+              <span>{playerName || 'Chưa đặt tên'}</span>
+              <span>✎</span>
             </button>
             <span className="status-tag" style={{ color: syncColor[syncStatus.type] || '#adb5bd' }}>
               {syncStatus.text}
@@ -483,12 +508,50 @@ export default function GameCanvas({
         </button>
       </div>
 
-      {/* Modal sửa tên */}
+      {/* Modal sửa tên & Avatar */}
       {showNameModal && (
         <div className="modal-overlay" onClick={() => setShowNameModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Đổi Tên Người Chơi</h3>
-            <p className="modal-desc">Nhập tên mới để lưu tiến trình và cập nhật bảng xếp hạng:</p>
+            <h3 className="modal-title">Hồ Sơ Người Chơi</h3>
+            <p className="modal-desc">Đổi hình đại diện và tên hiển thị trong game:</p>
+
+            {/* Avatar Preview & Upload */}
+            <div className="avatar-picker-label">Hình đại diện (Avatar):</div>
+            <div className="avatar-preview-box">
+              <div className="avatar-preview-circle">
+                <AvatarDisplay avatar={selectedAvatar} size={56} />
+              </div>
+              <div className="avatar-upload-cta">
+                <label className="btn-upload-avatar">
+                  📷 Tải ảnh từ máy
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarFileUpload}
+                  />
+                </label>
+                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
+              </div>
+            </div>
+
+            <div className="avatar-picker-label" style={{ marginTop: '8px' }}>
+              Hoặc chọn biểu tượng có sẵn:
+            </div>
+            <div className="avatar-grid">
+              {AVATAR_LIST.map((av) => (
+                <button
+                  key={av}
+                  type="button"
+                  className={`avatar-option ${selectedAvatar === av ? 'active' : ''}`}
+                  onClick={() => setSelectedAvatar(av)}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+
+            <div className="avatar-picker-label">Tên người chơi:</div>
             <input
               className="modal-input"
               placeholder="Ví dụ: Rối Tí Nị..."
@@ -503,7 +566,7 @@ export default function GameCanvas({
                 Hủy
               </button>
               <button className="btn-action" onClick={handleSaveName}>
-                Lưu tên
+                Lưu hồ sơ
               </button>
             </div>
           </div>

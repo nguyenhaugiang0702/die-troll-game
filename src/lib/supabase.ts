@@ -11,11 +11,56 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// ─── Avatar Presets ──────────────────────────────────────────────────────────
+
+export const AVATAR_LIST = [
+  '🎭', '🤡', '💀', '👻', '🤖', '🐱', '🐸', '🦊',
+  '🥷', '👾', '🧙‍♂️', '👑', '😎', '🔥', '💩', '😈',
+];
+export const DEFAULT_AVATAR = '🎭';
+
+// ─── Xử lý ảnh tải lên từ thiết bị (Resize & nén sang Base64) ───────────────
+
+export function processAvatarImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      return reject(new Error('Vui lòng chọn file hình ảnh hợp lệ (JPG, PNG, WebP...)'));
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 128; // 128x128 vừa sắc nét vừa siêu nhẹ (< 15KB)
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Không thể xử lý ảnh trên trình duyệt.'));
+
+        // Cắt vuông tâm ảnh (Center square crop)
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Lỗi khi đọc dữ liệu hình ảnh.'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Lỗi khi đọc file từ thiết bị.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface Player {
   id?: string;
   name: string;
+  avatar?: string;
   level: number;
   deaths: number;
   play_time?: number; // thời gian chơi/hoàn thành tính bằng giây (seconds)
@@ -25,6 +70,7 @@ export interface Player {
 export interface PlayerProfile {
   id: string;
   name: string;
+  avatar: string;
   level: number;
   deaths: number;
   playTime: number; // tính bằng giây
@@ -35,8 +81,7 @@ export interface VerifyResult {
   isMatch: boolean;
   isNewUser: boolean;
   message?: string;
-  localData?: { level: number; deaths: number; playTime: number; name: string };
-  serverData?: { level: number; deaths: number; playTime: number; name: string };
+  serverData?: { level: number; deaths: number; playTime: number; name: string; avatar?: string };
 }
 
 // ─── Format thời gian: Giây -> Giờ / Phút / Giây ─────────────────────────────
@@ -83,27 +128,52 @@ export function setPlayerName(name: string): string {
   return trimmed;
 }
 
+export function getPlayerAvatar(): string {
+  if (typeof localStorage === 'undefined') return DEFAULT_AVATAR;
+  return localStorage.getItem('puppet_player_avatar') || DEFAULT_AVATAR;
+}
+
+export function setPlayerAvatar(avatar: string): string {
+  const clean = avatar || DEFAULT_AVATAR;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('puppet_player_avatar', clean);
+  }
+  return clean;
+}
+
 export function getLocalProgress(): {
   level: number;
   deaths: number;
   playTime: number;
   name: string;
+  avatar: string;
 } {
-  if (typeof localStorage === 'undefined') return { level: 1, deaths: 0, playTime: 0, name: '' };
+  if (typeof localStorage === 'undefined') {
+    return { level: 1, deaths: 0, playTime: 0, name: '', avatar: DEFAULT_AVATAR };
+  }
   return {
     level: Math.max(1, parseInt(localStorage.getItem('puppet_last_level') || '1', 10)),
     deaths: Math.max(0, parseInt(localStorage.getItem('puppet_last_deaths') || '0', 10)),
     playTime: Math.max(0, parseInt(localStorage.getItem('puppet_last_play_time') || '0', 10)),
     name: localStorage.getItem('puppet_player_name') || '',
+    avatar: localStorage.getItem('puppet_player_avatar') || DEFAULT_AVATAR,
   };
 }
 
-export function setLocalProgress(level: number, deaths: number, playTime?: number): void {
+export function setLocalProgress(
+  level: number,
+  deaths: number,
+  playTime?: number,
+  avatar?: string
+): void {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('puppet_last_level', String(level));
     localStorage.setItem('puppet_last_deaths', String(deaths));
     if (playTime !== undefined) {
       localStorage.setItem('puppet_last_play_time', String(Math.floor(playTime)));
+    }
+    if (avatar) {
+      localStorage.setItem('puppet_player_avatar', avatar);
     }
   }
 }
@@ -112,6 +182,7 @@ export function clearPlayerSession(): void {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('puppet_player_id');
     localStorage.removeItem('puppet_player_name');
+    localStorage.removeItem('puppet_player_avatar');
     localStorage.removeItem('puppet_last_level');
     localStorage.removeItem('puppet_last_deaths');
     localStorage.removeItem('puppet_last_play_time');
@@ -119,15 +190,20 @@ export function clearPlayerSession(): void {
   }
 }
 
-// ─── Đăng ký hoặc khôi phục người chơi (Auto-gen ID) ──────────────────────────
+// ─── Đăng ký hoặc khôi phục người chơi (Auto-gen ID & Avatar) ─────────────────
 
-export async function registerOrFindPlayer(name: string): Promise<PlayerProfile> {
+export async function registerOrFindPlayer(
+  name: string,
+  chosenAvatar?: string
+): Promise<PlayerProfile> {
   const trimmed = (name || '').trim();
+  const avatar = chosenAvatar || getPlayerAvatar();
   setPlayerName(trimmed);
+  setPlayerAvatar(avatar);
 
   const localId = getPlayerId();
 
-  // 1. Nếu trên máy đã có ID, cập nhật tên mới nếu đổi
+  // 1. Nếu trên máy đã có ID, cập nhật tên/avatar mới nếu đổi
   if (localId) {
     try {
       const { data, error } = await supabase
@@ -137,14 +213,21 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
         .maybeSingle();
 
       if (data && !error) {
-        if (data.name !== trimmed) {
-          await supabase.from('players').update({ name: trimmed }).eq('id', localId);
+        const updatePayload: Record<string, any> = {};
+        if (data.name !== trimmed) updatePayload.name = trimmed;
+        if (avatar && data.avatar !== avatar) updatePayload.avatar = avatar;
+
+        if (Object.keys(updatePayload).length > 0) {
+          await supabase.from('players').update(updatePayload).eq('id', localId);
         }
+
         const timeVal = data.play_time || 0;
-        setLocalProgress(data.level || 1, data.deaths || 0, timeVal);
+        const currentAvatar = avatar || data.avatar || DEFAULT_AVATAR;
+        setLocalProgress(data.level || 1, data.deaths || 0, timeVal, currentAvatar);
         return {
           id: String(data.id),
           name: trimmed,
+          avatar: currentAvatar,
           level: data.level || 1,
           deaths: data.deaths || 0,
           playTime: timeVal,
@@ -168,11 +251,13 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
 
     if (existing && !error) {
       const timeVal = existing.play_time || 0;
+      const currentAvatar = existing.avatar || avatar || DEFAULT_AVATAR;
       setPlayerId(existing.id);
-      setLocalProgress(existing.level || 1, existing.deaths || 0, timeVal);
+      setLocalProgress(existing.level || 1, existing.deaths || 0, timeVal, currentAvatar);
       return {
         id: String(existing.id),
         name: existing.name,
+        avatar: currentAvatar,
         level: existing.level || 1,
         deaths: existing.deaths || 0,
         playTime: timeVal,
@@ -186,6 +271,7 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
   // 3. Người chơi mới: Không gửi id, để Supabase tự sinh (auto-gen)
   const newPayload = {
     name: trimmed,
+    avatar,
     level: 1,
     deaths: 0,
     play_time: 0,
@@ -203,10 +289,12 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
       console.error('[Supabase] Lỗi tạo người chơi mới:', error.message);
     } else if (data) {
       setPlayerId(data.id);
-      setLocalProgress(data.level || 1, data.deaths || 0, 0);
+      const av = data.avatar || avatar;
+      setLocalProgress(data.level || 1, data.deaths || 0, 0, av);
       return {
         id: String(data.id),
         name: data.name,
+        avatar: av,
         level: data.level || 1,
         deaths: data.deaths || 0,
         playTime: 0,
@@ -218,15 +306,30 @@ export async function registerOrFindPlayer(name: string): Promise<PlayerProfile>
   }
 
   // Fallback nếu không có mạng
-  setLocalProgress(1, 0, 0);
+  setLocalProgress(1, 0, 0, avatar);
   return {
     id: '',
     name: trimmed,
+    avatar,
     level: 1,
     deaths: 0,
     playTime: 0,
     hasPlayed: true,
   };
+}
+
+// ─── Cập nhật riêng Avatar ───────────────────────────────────────────────────
+
+export async function updatePlayerAvatar(avatar: string): Promise<boolean> {
+  const clean = setPlayerAvatar(avatar);
+  const id = getPlayerId();
+  if (!id) return true;
+  try {
+    const { error } = await supabase.from('players').update({ avatar: clean }).eq('id', id);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 // ─── Lưu tiến trình người chơi ───────────────────────────────────────────────
@@ -241,15 +344,17 @@ export async function savePlayerProgress(
 ): Promise<void> {
   const name = getPlayerName();
   if (!name) return;
+  const avatar = getPlayerAvatar();
 
   const targetLevel = Math.max(1, level + 1); // 1-based level
   const targetPlayTime = Math.max(0, Math.floor(playTime));
-  setLocalProgress(targetLevel, deaths, targetPlayTime);
+  setLocalProgress(targetLevel, deaths, targetPlayTime, avatar);
 
   const doSave = async () => {
     const id = getPlayerId();
     const payload = {
       name,
+      avatar,
       level: targetLevel,
       deaths,
       play_time: targetPlayTime,
@@ -278,9 +383,6 @@ export async function savePlayerProgress(
         if (data?.id) {
           setPlayerId(data.id);
         }
-        if (error) {
-          console.error('[Supabase] Lỗi insert tiến trình mới:', error.message);
-        }
       }
     } catch (e) {
       console.error('[Supabase] Lỗi mạng khi lưu:', e);
@@ -305,6 +407,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
   const fallback: PlayerProfile = {
     id,
     name: local.name,
+    avatar: local.avatar || DEFAULT_AVATAR,
     level: local.level,
     deaths: local.deaths,
     playTime: local.playTime,
@@ -315,14 +418,17 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, level, deaths, play_time')
+        .select('id, name, avatar, level, deaths, play_time')
         .eq('id', id)
         .maybeSingle();
 
       if (data && !error) {
+        const av = data.avatar || local.avatar || DEFAULT_AVATAR;
+        setPlayerAvatar(av);
         return {
           id: String(data.id),
           name: data.name || local.name,
+          avatar: av,
           level: data.level || 1,
           deaths: data.deaths || 0,
           playTime: data.play_time || local.playTime || 0,
@@ -338,7 +444,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, level, deaths, play_time')
+        .select('id, name, avatar, level, deaths, play_time')
         .ilike('name', local.name)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -346,9 +452,12 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
 
       if (data && !error) {
         setPlayerId(data.id);
+        const av = data.avatar || local.avatar || DEFAULT_AVATAR;
+        setPlayerAvatar(av);
         return {
           id: String(data.id),
           name: data.name,
+          avatar: av,
           level: data.level || 1,
           deaths: data.deaths || 0,
           playTime: data.play_time || local.playTime || 0,
@@ -407,6 +516,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
             deaths: data.deaths,
             playTime: data.play_time || 0,
             name: data.name,
+            avatar: data.avatar || DEFAULT_AVATAR,
           },
         };
       }
@@ -419,6 +529,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
           deaths: data.deaths,
           playTime: data.play_time || 0,
           name: data.name,
+          avatar: data.avatar || DEFAULT_AVATAR,
         },
       };
     } catch {
@@ -434,7 +545,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
   try {
     const { data, error } = await supabase
       .from('players')
-      .select('id, name, level, deaths, play_time')
+      .select('id, name, avatar, level, deaths, play_time')
       .eq('id', localId)
       .maybeSingle();
 
@@ -461,6 +572,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
           deaths: data.deaths,
           playTime: data.play_time || 0,
           name: data.name,
+          avatar: data.avatar || DEFAULT_AVATAR,
         },
       };
     }
@@ -473,6 +585,7 @@ export async function verifyLocalWithServer(): Promise<VerifyResult> {
         deaths: data.deaths,
         playTime: data.play_time || 0,
         name: data.name,
+        avatar: data.avatar || DEFAULT_AVATAR,
       },
     };
   } catch (err: unknown) {
@@ -491,9 +604,11 @@ export function syncLocalWithServer(serverData: {
   deaths: number;
   playTime?: number;
   name: string;
+  avatar?: string;
 }): void {
   setPlayerName(serverData.name);
-  setLocalProgress(serverData.level, serverData.deaths, serverData.playTime);
+  if (serverData.avatar) setPlayerAvatar(serverData.avatar);
+  setLocalProgress(serverData.level, serverData.deaths, serverData.playTime, serverData.avatar);
 }
 
 // ─── Bảng xếp hạng ───────────────────────────────────────────────────────────
@@ -504,7 +619,7 @@ export async function fetchLeaderboard(): Promise<
   try {
     const { data, error } = await supabase
       .from('players')
-      .select('id, name, level, deaths, play_time, updated_at')
+      .select('id, name, avatar, level, deaths, play_time, updated_at')
       .order('level', { ascending: false })
       .order('deaths', { ascending: true })
       .order('play_time', { ascending: true })

@@ -7,10 +7,14 @@ import {
   verifyLocalWithServer,
   syncLocalWithServer,
   formatPlayTime,
+  processAvatarImage,
+  AVATAR_LIST,
+  DEFAULT_AVATAR,
   type PlayerProfile,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
 import Toast from './Toast';
+import AvatarDisplay from './AvatarDisplay';
 
 interface HomeScreenProps {
   profile: PlayerProfile;
@@ -24,7 +28,9 @@ export default function HomeScreen({
   onRefreshProfile,
 }: HomeScreenProps) {
   const [showNameModal, setShowNameModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState(DEFAULT_AVATAR);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -34,7 +40,7 @@ export default function HomeScreen({
   const [toastData, setToastData] = useState<{
     title: string;
     message: string;
-    serverData?: { level: number; deaths: number; playTime: number; name: string };
+    serverData?: { level: number; deaths: number; playTime: number; name: string; avatar?: string };
   } | null>(null);
 
   // Xử lý khi nhấn nút "Chơi Ngay"
@@ -42,6 +48,7 @@ export default function HomeScreen({
     // Nếu chưa chơi lần nào (chưa có tên hoặc chưa có tiến trình)
     if (!profile.hasPlayed || !profile.name) {
       setNameInput('');
+      setSelectedAvatar(DEFAULT_AVATAR);
       setNameError('');
       setShowNameModal(true);
       return;
@@ -79,7 +86,20 @@ export default function HomeScreen({
     onStartGame(finalLevel, finalDeaths, finalPlayTime, finalName);
   };
 
-  // Xác nhận nhập tên
+  // Upload ảnh avatar từ thiết bị
+  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processAvatarImage(file);
+      setSelectedAvatar(dataUrl);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xử lý hình ảnh';
+      alert(msg);
+    }
+  };
+
+  // Xác nhận tạo người chơi mới
   const handleConfirmName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) {
@@ -94,10 +114,9 @@ export default function HomeScreen({
     try {
       setIsSubmitting(true);
       setNameError('');
-      const saved = await registerOrFindPlayer(trimmed);
+      const saved = await registerOrFindPlayer(trimmed, selectedAvatar);
       await onRefreshProfile();
       setShowNameModal(false);
-      // Vào game đúng level vừa đăng ký hoặc tìm thấy (level 1 nếu mới, hoặc level cũ nếu tên đã chơi)
       onStartGame(saved.level || 1, saved.deaths || 0, saved.playTime || 0, saved.name);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.';
@@ -107,9 +126,39 @@ export default function HomeScreen({
     }
   };
 
+  // Lưu chỉnh sửa Tên & Avatar
+  const handleSaveEditProfile = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
+      setNameError('Tên không được để trống!');
+      return;
+    }
+    if (trimmed.length > 20) {
+      setNameError('Tên không được vượt quá 20 ký tự!');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setNameError('');
+      await registerOrFindPlayer(trimmed, selectedAvatar);
+      await onRefreshProfile();
+      setShowEditModal(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu.';
+      setNameError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleResetProfile = () => {
     if (window.confirm('Bạn có chắc muốn xoá tiến trình trên máy này để tạo người chơi mới?')) {
       clearPlayerSession();
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('puppet_active_screen', 'home');
+      }
+      setShowEditModal(false);
       onRefreshProfile();
     }
   };
@@ -151,17 +200,33 @@ export default function HomeScreen({
         {profile.hasPlayed && profile.name ? (
           <div className="profile-existing">
             <div className="profile-header">
-              <span className="profile-avatar">👤</span>
+              <button
+                className="profile-avatar-btn"
+                onClick={() => {
+                  setNameInput(profile.name);
+                  setSelectedAvatar(profile.avatar || DEFAULT_AVATAR);
+                  setNameError('');
+                  setShowEditModal(true);
+                }}
+                title="Nhấn để đổi Avatar & Tên"
+              >
+                <AvatarDisplay avatar={profile.avatar || DEFAULT_AVATAR} size={40} />
+              </button>
               <div className="profile-details">
                 <span className="profile-greeting">Chào mừng trở lại!</span>
                 <span className="profile-name">{profile.name}</span>
               </div>
               <button
                 className="profile-reset-btn"
-                onClick={handleResetProfile}
-                title="Đổi tên / Chơi tài khoản mới"
+                onClick={() => {
+                  setNameInput(profile.name);
+                  setSelectedAvatar(profile.avatar || DEFAULT_AVATAR);
+                  setNameError('');
+                  setShowEditModal(true);
+                }}
+                title="Đổi tên / Avatar"
               >
-                Đổi tên ✎
+                Sửa hồ sơ ✎
               </button>
             </div>
             <div className="profile-stats">
@@ -243,15 +308,53 @@ export default function HomeScreen({
         <span className="tip-item">R : Chơi lại màn</span>
       </div>
 
-      {/* Modal Nhập Tên cho người chơi mới */}
+      {/* Modal Nhập Tên & Chọn/Tải Avatar cho người chơi mới */}
       {showNameModal && (
         <div className="modal-overlay" onClick={() => !isSubmitting && setShowNameModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Chào Mừng Người Chơi!</h3>
             <p className="modal-desc">
-              Nhập tên của bạn để tự động lưu tiến trình và ghi danh trên Bảng Xếp Hạng:
+              Tải ảnh đại diện hoặc chọn biểu tượng và đặt tên của bạn:
             </p>
 
+            {/* Avatar Preview & Upload */}
+            <div className="avatar-picker-label">Hình đại diện (Avatar):</div>
+            <div className="avatar-preview-box">
+              <div className="avatar-preview-circle">
+                <AvatarDisplay avatar={selectedAvatar} size={56} />
+              </div>
+              <div className="avatar-upload-cta">
+                <label className="btn-upload-avatar">
+                  📷 Tải ảnh từ máy
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarFileUpload}
+                  />
+                </label>
+                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
+              </div>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="avatar-picker-label" style={{ marginTop: '8px' }}>
+              Hoặc chọn biểu tượng có sẵn:
+            </div>
+            <div className="avatar-grid">
+              {AVATAR_LIST.map((av) => (
+                <button
+                  key={av}
+                  type="button"
+                  className={`avatar-option ${selectedAvatar === av ? 'active' : ''}`}
+                  onClick={() => setSelectedAvatar(av)}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+
+            <div className="avatar-picker-label">Biệt danh người chơi:</div>
             <input
               className="modal-input"
               placeholder="Ví dụ: Rối Tí Nị, Siêu Nhân..."
@@ -288,6 +391,103 @@ export default function HomeScreen({
               >
                 {isSubmitting ? 'Đang tạo...' : 'Vào Chơi 🚀'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sửa Hồ Sơ (Tên & Avatar ảnh/biểu tượng) */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={() => !isSubmitting && setShowEditModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Hồ Sơ Người Chơi</h3>
+            <p className="modal-desc">Tải ảnh đại diện mới hoặc đổi tên hiển thị của bạn:</p>
+
+            {/* Avatar Preview & Upload */}
+            <div className="avatar-picker-label">Hình đại diện (Avatar):</div>
+            <div className="avatar-preview-box">
+              <div className="avatar-preview-circle">
+                <AvatarDisplay avatar={selectedAvatar} size={56} />
+              </div>
+              <div className="avatar-upload-cta">
+                <label className="btn-upload-avatar">
+                  📷 Tải ảnh từ máy
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleAvatarFileUpload}
+                  />
+                </label>
+                <span className="avatar-upload-hint">Tự động căn chỉnh vuông 128x128 sắc nét</span>
+              </div>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="avatar-picker-label" style={{ marginTop: '8px' }}>
+              Hoặc chọn biểu tượng có sẵn:
+            </div>
+            <div className="avatar-grid">
+              {AVATAR_LIST.map((av) => (
+                <button
+                  key={av}
+                  type="button"
+                  className={`avatar-option ${selectedAvatar === av ? 'active' : ''}`}
+                  onClick={() => setSelectedAvatar(av)}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+
+            <div className="avatar-picker-label">Tên hiển thị:</div>
+            <input
+              className="modal-input"
+              placeholder="Nhập tên mới..."
+              maxLength={20}
+              value={nameInput}
+              onChange={(e) => {
+                setNameInput(e.target.value);
+                if (nameError) setNameError('');
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && !isSubmitting && handleSaveEditProfile()}
+              autoFocus
+              disabled={isSubmitting}
+            />
+
+            {nameError && (
+              <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-8px 0 12px 0', textAlign: 'center' }}>
+                ⚠️ {nameError}
+              </p>
+            )}
+
+            <div className="modal-buttons" style={{ justifyContent: 'space-between' }}>
+              <button
+                className="btn-secondary"
+                style={{ color: '#ff6b6b', borderColor: '#6b2d3d' }}
+                onClick={handleResetProfile}
+                disabled={isSubmitting}
+                title="Xoá tiến trình và tạo tài khoản mới"
+              >
+                Chơi mới
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Hủy
+                </button>
+                <button
+                  className="btn-action"
+                  onClick={handleSaveEditProfile}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Đang lưu...' : 'Lưu hồ sơ'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
