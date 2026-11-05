@@ -143,8 +143,8 @@ p.hint {
   width: min(92%, 460px);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
   animation: modalIn 0.2s ease-out;
-  max-height: 95%;
-  overflow-y: auto;
+  /* max-height: 95%;
+  overflow-y: auto; */
 }
 
 @keyframes modalIn {
@@ -631,10 +631,18 @@ p.hint {
 
 /* Tối ưu Leaderboard trên Mobile (<= 580px) */
 @media (max-width: 580px) {
+
+  .home-container,
+  .modal-card {
+    max-height: 95%;
+    overflow-y: auto;
+  }
+
   .modal-card.modal-card-leaderboard {
     width: 96vw !important;
     padding: 14px 8px !important;
   }
+
 
   .lb-modal-title {
     font-size: 18px;
@@ -745,8 +753,8 @@ p.hint {
 /* ─── Trang Chủ (HomeScreen) ────────────────────────────────────────────────── */
 .home-container {
   width: min(95vw, 700px);
-  max-height: 95%;
-  overflow-y: auto;
+  /* max-height: 95%;
+  overflow-y: auto; */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -925,6 +933,12 @@ p.hint {
 @media (max-width: 480px) {
   .avatar-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .home-container,
+  .modal-card {
+    max-height: 95%;
+    overflow-y: auto;
   }
 }
 
@@ -1275,6 +1289,13 @@ p.hint {
 
 /* Tinh chỉnh Responsive trên Mobile */
 @media (max-width: 520px) {
+
+  .home-container,
+  .modal-card {
+    max-height: 95%;
+    overflow-y: auto;
+  }
+
   .profile-header {
     flex-wrap: wrap;
     gap: 10px 8px;
@@ -1455,6 +1476,13 @@ p.hint {
 
 /* Điện thoại: xếp dọc, nút nhỏ gọn ở giữa */
 @media (max-width: 480px) {
+
+  .home-container,
+  .modal-card {
+    max-height: 95%;
+    overflow-y: auto;
+  }
+
   .home-sub-actions {
     flex-direction: column;
     gap: 8px;
