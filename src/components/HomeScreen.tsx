@@ -464,6 +464,14 @@ export default function HomeScreen({
         <span className="tip-item">R : Chơi lại màn</span>
       </div>
 
+      {/* Lưu ý khi mở link qua ứng dụng (Zalo, Messenger, Facebook, TikTok...) */}
+      <div className="home-browser-notice">
+        <span className="notice-icon">💡</span>
+        <div className="notice-text">
+          <strong>Lưu ý:</strong> Nếu truy cập link bị lỗi hiển thị (lệch phím, méo màn hình...), bạn vui lòng nhấn vào dấu <strong>⋮</strong> hoặc <strong>⋯</strong> ở góc trên và chọn <strong>&quot;Mở bằng trình duyệt&quot;</strong> (Chrome / Safari) để chơi mượt mà nhất nhé!
+        </div>
+      </div>
+
       {/* Modal Nhập Tên & Chọn Avatar cho người chơi mới */}
       {showNameModal && (
         <div className="modal-overlay" onClick={() => !isSubmitting && setShowNameModal(false)}>

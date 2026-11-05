@@ -590,7 +590,15 @@ export default function GameCanvas({
         }}
       />
 
-      <p className="hint">← → hoặc A D: di chuyển · Space, W hoặc ↑: nhảy · R: chơi lại màn</p>
+      <p className="hint">
+        ← → hoặc A D: di chuyển · Space, W hoặc ↑: nhảy · R: chơi lại màn
+        <span className="hint-browser-tip"> · 💡 Nếu lỗi hiển thị, hãy chọn <em>&quot;Mở bằng trình duyệt&quot;</em></span>
+      </p>
+
+      {/* Gợi ý cho mobile khi mở qua WebView */}
+      <div className="mobile-browser-notice">
+        💡 Nếu bị lỗi giao diện hoặc lệch phím, hãy nhấn <strong>⋮</strong> và chọn <strong>&quot;Mở bằng trình duyệt&quot;</strong> (Chrome/Safari) nhé!
+      </div>
 
       {/* Mobile pad */}
       <div id="pad" onContextMenu={(e) => e.preventDefault()}>
