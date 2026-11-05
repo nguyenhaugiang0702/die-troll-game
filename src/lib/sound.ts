@@ -107,6 +107,34 @@ class SoundSystem {
     osc.stop(t + 0.14);
   }
 
+  // ─── SFX: Tiếng Tiếp Đất (Landing) ─────────────────────────────────────────
+  public playLand(intensity = 1) {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.08);
+
+    const vol = Math.min(0.25, 0.12 * Math.max(0.6, intensity));
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
   // ─── SFX: Tiếng Qua Màn (Level Clear) ───────────────────────────────────────
   public playLevelUp() {
     if (this.isMuted) return;

@@ -17,6 +17,18 @@ import AvatarDisplay from './AvatarDisplay';
 import Toast from './Toast';
 import { sound } from '@/lib/sound';
 import SoundButton from './SoundButton';
+import SkinModal from './SkinModal';
+import {
+  getSelectedSkin,
+  setSelectedSkin,
+  resolveActiveSkinId,
+  drawPuppetSkin,
+  spawnSkinMoveEffect,
+  spawnSkinJumpEffect,
+  spawnSkinLandEffect,
+  renderSkinParticles,
+  type SkinParticle,
+} from '@/lib/skins';
 
 interface GameCanvasProps {
   initialLevel?: number;
@@ -37,11 +49,14 @@ function createGameEngine(
   },
   startLevel = 1,
   startDeaths = 0,
-  startPlayTime = 0
+  startPlayTime = 0,
+  startSkin = 'auto'
 ) {
   const x = canvas.getContext('2d')!;
   const W = 800, H = 450;
   const FONT = getComputedStyle(document.documentElement).getPropertyValue('--font') || 'sans-serif';
+  let currentSkin = startSkin || 'auto';
+  let tick = 0;
 
   const P = (a: number, b: number, w: number, h: number, o?: object) =>
     ({ k: 'p', x: a, y: b, w, h, vx: 0, vy: 0, ...o } as any);
@@ -61,7 +76,14 @@ function createGameEngine(
     playTime = Math.max(0, startPlayTime || 0),
     keys: Record<string, number> = {},
     pl: any;
-  let fx_: any[] = [], st = 'play', tm = 0, msg = '';
+  let fx_: any[] = [],
+    skinFx: SkinParticle[] = [],
+    jumpTimer = 0,
+    landTimer = 0,
+    stepTimer = 0,
+    st = 'play',
+    tm = 0,
+    msg = '';
   const trolls = ['Ối!', 'Lại nữa à?', 'Tin tưởng làm gì...', 'Cố lên nào!', 'Rối đứt dây rồi', 'Tưởng dễ à? :)', 'Gần được rồi... là nói dối',
     'Bạn vừa làm gì vậy?', 'Gai: 1 - Bạn: 0', 'Đừng nản, mới chết có mấy lần thôi', 'Nhìn kỹ lại đi nào',
     'Ai bảo tin cái bẫy đó?', 'Thử lại lần nữa nhé :)', 'Tay hay là mạng đây?', 'Chết đẹp đấy!',
@@ -126,13 +148,14 @@ function createGameEngine(
   function load() {
     L = LV[lv](); L.rev = 0; L.D.w = 30; L.D.h = 60;
     pl = { x: L.sx || 50, y: L.sy || 340, w: 16, h: 34, vx: 0, vy: 0, g: 0, f: 1, ph: 0 };
-    st = 'play'; fx_ = [];
+    st = 'play'; fx_ = []; skinFx = []; jumpTimer = 0; landTimer = 0; stepTimer = 0;
   }
 
   function die() {
     if (st !== 'play') return;
     sound.playDeath();
     st = 'dead'; tm = 50; deaths++;
+    skinFx = [];
     msg = trolls[Math.random() * trolls.length | 0];
     callbacks.onDie(lv, deaths, Math.floor(playTime));
     for (let i = 0; i < 18; i++)
@@ -152,12 +175,28 @@ function createGameEngine(
       if (e.ft > 0 && --e.ft === 0) e.g = 1;
     });
     L.T.forEach((t: any) => { if (!t.d && pl.x + 8 > t.a && pl.x + 8 < t.b) { t.d = 1; t.f(); } });
+    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1);
+
     let m = (keys.ArrowRight || keys.d || keys.D ? 1 : 0) - (keys.ArrowLeft || keys.a || keys.A ? 1 : 0);
     if (L.rev) m = -m;
     pl.vx = m * 4.2; if (m) pl.f = m; pl.ph += Math.abs(pl.vx) * .08;
     pl.x = Math.max(0, Math.min(W - pl.w, pl.x + pl.vx));
     const sol = L.P.filter((p: any) => !p.fake && p.y < H + 100);
     sol.forEach((p: any) => { if (hit(pl, p)) { if (pl.vx > 0) pl.x = p.x - pl.w; else if (pl.vx < 0) pl.x = p.x + p.w; } });
+
+    // Hiệu ứng hạt khi nhân vật di chuyển
+    if (pl.g && Math.abs(pl.vx) > 0.5) {
+      stepTimer++;
+      if (stepTimer % 3 === 0) {
+        spawnSkinMoveEffect(skinFx, pl.x + 8, pl.y + pl.h, pl.f, activeSkin, tick);
+      }
+    } else {
+      stepTimer = 0;
+    }
+
+    const wasInAir = pl.g === 0;
+    const fallVy = pl.vy;
+
     pl.vy = Math.min(pl.vy + .6, 14); pl.y += pl.vy; pl.g = 0;
     sol.forEach((p: any) => {
       if (hit(pl, p)) {
@@ -166,7 +205,28 @@ function createGameEngine(
         pl.vy = 0;
       }
     });
-    if ((keys[' '] || keys.ArrowUp || keys.w || keys.W) && pl.g) { pl.vy = -12.5; pl.g = 0; sound.playJump(); }
+
+    // Hiệu ứng tiếp đất (Landing)
+    if (wasInAir && pl.g && fallVy > 2.5) {
+      landTimer = 7;
+      jumpTimer = 0;
+      sound.playLand(fallVy / 8);
+      spawnSkinLandEffect(skinFx, pl.x + 8, pl.y + pl.h, activeSkin, Math.min(fallVy / 8, 1.5));
+    }
+
+    // Hiệu ứng khi nhảy (Jump)
+    if ((keys[' '] || keys.ArrowUp || keys.w || keys.W) && pl.g) {
+      pl.vy = -12.5;
+      pl.g = 0;
+      jumpTimer = 8;
+      landTimer = 0;
+      sound.playJump();
+      spawnSkinJumpEffect(skinFx, pl.x + 8, pl.y + pl.h, activeSkin);
+    }
+
+    if (jumpTimer > 0) jumpTimer--;
+    if (landTimer > 0) landTimer--;
+
     L.P.forEach((p: any) => { if (p.hide) p.sh = Math.abs(pl.x + 8 - (p.x + p.w / 2)) < 110 && Math.abs(pl.y - p.y) < 220; });
     L.S.forEach((s: any) => { if (s.on && hit(pl, s, 5)) die(); });
     (L.F || []).forEach((f: any) => { if (hit(pl, f)) die(); });
@@ -212,6 +272,7 @@ function createGameEngine(
       }
     });
     (L.F || []).forEach(door); door(L.D);
+    renderSkinParticles(x, skinFx);
     if (st === 'play') puppet();
     x.fillStyle = '#ff5c7a';
     fx_.forEach((f: any) => { x.beginPath(); x.arc(f.x, f.y, f.r, 0, 7); x.fill(); });
@@ -233,16 +294,19 @@ function createGameEngine(
 
   function puppet() {
     const cx = pl.x + 8, y = pl.y, s = Math.sin(pl.ph) * (pl.g ? 6 : 3), o = pl.g ? 0 : -4;
-    x.strokeStyle = '#8a7bff55'; x.lineWidth = 1;
-    [[-6, 0], [0, -8], [6, 0]].forEach(([a, b]) => {
-      x.beginPath(); x.moveTo(cx + a, y + (b ? 4 : 14)); x.lineTo(cx + a * 2, 0); x.stroke();
-    });
-    x.strokeStyle = '#f3e9d2'; x.fillStyle = '#f3e9d2'; x.lineWidth = 3; x.lineCap = 'round';
-    x.beginPath(); x.arc(cx, y + 7, 7, 0, 7); x.fill();
-    x.beginPath(); x.moveTo(cx, y + 14); x.lineTo(cx, y + 24);
-    x.moveTo(cx, y + 16); x.lineTo(cx + s + o, y + 22 + o); x.moveTo(cx, y + 16); x.lineTo(cx - s - o, y + 22 + o);
-    x.moveTo(cx, y + 24); x.lineTo(cx + s, y + 34); x.moveTo(cx, y + 24); x.lineTo(cx - s, y + 34); x.stroke();
-    x.fillStyle = '#201b33'; x.beginPath(); x.arc(cx + pl.f * 3, y + 6, 1.8, 0, 7); x.fill();
+    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1);
+    let scaleX = 1;
+    let scaleY = 1;
+    if (landTimer > 0) {
+      const factor = landTimer / 7;
+      scaleX = 1 + 0.22 * factor;
+      scaleY = 1 - 0.22 * factor;
+    } else if (jumpTimer > 0) {
+      const factor = jumpTimer / 8;
+      scaleX = 1 - 0.12 * factor;
+      scaleY = 1 + 0.18 * factor;
+    }
+    drawPuppetSkin(x, cx, y, s, o, pl.f, activeSkin, tick, scaleX, scaleY);
   }
 
   load();
@@ -250,6 +314,7 @@ function createGameEngine(
   let lastTime = performance.now();
 
   function loop(t: number) {
+    tick++;
     const dt = Math.min((t - lastTime) / 1000, 0.1);
     lastTime = t;
     if (st === 'play') {
@@ -268,6 +333,8 @@ function createGameEngine(
     get deaths() { return deaths; },
     get playTime() { return Math.floor(playTime); },
     get st() { return st; },
+    get skin() { return currentSkin; },
+    setSkin(newSkin: string) { currentSkin = newSkin; },
     pressKey(k: string) { keys[k] = 1; },
     releaseKey(k: string) { delete keys[k]; },
     clearKeys() { keys = {}; },
@@ -306,6 +373,18 @@ export default function GameCanvas({
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [currentSkin, setCurrentSkin] = useState('auto');
+  const [showSkinModal, setShowSkinModal] = useState(false);
+
+  useEffect(() => {
+    setCurrentSkin(getSelectedSkin());
+  }, []);
+
+  const handleSelectSkin = (skinId: string) => {
+    setSelectedSkin(skinId);
+    setCurrentSkin(skinId);
+    engineRef.current?.setSkin(skinId);
+  };
 
   const updateSync = useCallback((text: string, type: string) => {
     setSyncStatus({ text, type });
@@ -340,7 +419,8 @@ export default function GameCanvas({
       },
       initialLevel,
       initialDeaths,
-      initialPlayTime
+      initialPlayTime,
+      getSelectedSkin()
     );
     engineRef.current = engine;
 
@@ -458,6 +538,13 @@ export default function GameCanvas({
 
         <div className="top-right">
           <SoundButton className="desktop-sound-btn" size="sm" />
+          <button
+            className="btn-action btn-skin-toggle"
+            onClick={() => setShowSkinModal(true)}
+            title="Tủ đồ trang phục (Skins)"
+          >
+            👕 Skin
+          </button>
           <button className="btn-action" onClick={() => setShowRestartConfirm(true)}>
             🔁 Chơi lại từ đầu
           </button>
@@ -619,6 +706,17 @@ export default function GameCanvas({
         <LeaderboardModal
           currentPlayerName={playerName}
           onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      {/* Modal Tủ Đồ Trang Phục (Skins) */}
+      {showSkinModal && (
+        <SkinModal
+          currentLevel={(engineRef.current?.lv ?? initialLevel - 1) + 1}
+          totalDeaths={engineRef.current?.deaths ?? initialDeaths}
+          selectedSkinId={currentSkin}
+          onSelectSkin={handleSelectSkin}
+          onClose={() => setShowSkinModal(false)}
         />
       )}
     </div>

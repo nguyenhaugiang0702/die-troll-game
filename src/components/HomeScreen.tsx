@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   registerOrFindPlayer,
   clearPlayerSession,
@@ -18,6 +18,8 @@ import AvatarDisplay from './AvatarDisplay';
 import SoundButton from './SoundButton';
 import { sound } from '@/lib/sound';
 import { enterLandscape, exitLandscape } from '@/lib/landscape';
+import SkinModal from './SkinModal';
+import { getSelectedSkin, setSelectedSkin } from '@/lib/skins';
 
 interface HomeScreenProps {
   profile: PlayerProfile;
@@ -38,6 +40,17 @@ export default function HomeScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSkinModal, setShowSkinModal] = useState(false);
+  const [selectedSkin, setSelectedSkinState] = useState('auto');
+
+  useEffect(() => {
+    setSelectedSkinState(getSelectedSkin());
+  }, []);
+
+  const handleSelectSkin = (skinId: string) => {
+    setSelectedSkin(skinId);
+    setSelectedSkinState(skinId);
+  };
 
   // Sao chép ID & Khôi phục ID
   const [copiedId, setCopiedId] = useState(false);
@@ -399,6 +412,18 @@ export default function HomeScreen({
           </span>
         </button>
 
+        <button
+          type="button"
+          className="btn-home-skin"
+          onClick={() => setShowSkinModal(true)}
+        >
+          <span className="btn-icon">👕</span>
+          <span className="btn-text-group">
+            <span className="btn-main-text">Tủ Đồ Trang Phục (Skins)</span>
+            <span className="btn-sub-text">Mở khóa diện mạo độc lạ theo Màn & Số lần chết</span>
+          </span>
+        </button>
+
         {/* Nút phụ tuỳ chọn: ngang hàng trên PC, xếp dọc trên điện thoại */}
         <div className="home-sub-actions">
           <button
@@ -699,6 +724,17 @@ export default function HomeScreen({
         <LeaderboardModal
           currentPlayerName={profile.name}
           onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      {/* Modal Tủ Đồ Trang Phục (Skins) */}
+      {showSkinModal && (
+        <SkinModal
+          currentLevel={profile.level || 1}
+          totalDeaths={profile.deaths || 0}
+          selectedSkinId={selectedSkin}
+          onSelectSkin={handleSelectSkin}
+          onClose={() => setShowSkinModal(false)}
         />
       )}
     </div>
