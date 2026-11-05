@@ -506,43 +506,58 @@ export default function GameCanvas({
       <p className="hint">← → hoặc A D: di chuyển · Space, W hoặc ↑: nhảy · R: chơi lại màn</p>
 
       {/* Mobile pad */}
-      <div id="pad">
+      <div id="pad" onContextMenu={(e) => e.preventDefault()}>
         <div className="grp">
           {['ArrowLeft', 'ArrowRight'].map((k) => (
             <button
               key={k}
+              type="button"
+              draggable={false}
               onPointerDown={(e) => {
                 e.preventDefault();
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {}
                 padPress(k);
               }}
               onPointerUp={() => padRelease(k)}
               onPointerLeave={() => padRelease(k)}
               onPointerCancel={() => padRelease(k)}
+              onLostPointerCapture={() => padRelease(k)}
               aria-label={k === 'ArrowLeft' ? 'Sang trái' : 'Sang phải'}
             >
-              {k === 'ArrowLeft' ? '◀' : '▶'}
+              <span
+                className={`pad-arrow ${k === 'ArrowLeft' ? 'pad-arrow-left' : 'pad-arrow-right'}`}
+                aria-hidden="true"
+              />
             </button>
           ))}
         </div>
         <div className="pad-center-group">
-        <button id="rs" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>
-          ↻
+        <button id="rs" type="button" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>
+          <span className="pad-restart" aria-hidden="true" />
         </button>
           <SoundButton className="mobile-sound-btn" size="sm" />
         </div>
         <button
+          type="button"
           className="jump"
           aria-label="Nhảy"
+          draggable={false}
           onPointerDown={(e) => {
             e.preventDefault();
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {}
             sound.unlockAudio();
             padPress('ArrowUp');
           }}
           onPointerUp={() => padRelease('ArrowUp')}
           onPointerLeave={() => padRelease('ArrowUp')}
           onPointerCancel={() => padRelease('ArrowUp')}
+          onLostPointerCapture={() => padRelease('ArrowUp')}
         >
-          Nhảy
+          <span className="pad-jump-label">Nhảy</span>
         </button>
       </div>
 

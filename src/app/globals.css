@@ -1923,7 +1923,75 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    /* Chống bôi đen / copy / menu giữ lâu / highlight khi nhấn giữ */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    cursor: pointer;
+    transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+
+  #pad button * {
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Mũi tên vẽ bằng CSS thuần (không phải ký tự nên không thể bị bôi đen/copy) */
+  .pad-arrow {
+    display: block;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    transition: transform 0.08s ease, filter 0.12s ease;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  }
+
+  .pad-arrow-left {
+    border-width: 10px 15px 10px 0;
+    border-color: transparent #fff transparent transparent;
+    margin-right: 3px;
+  }
+
+  .pad-arrow-right {
+    border-width: 10px 0 10px 15px;
+    border-color: transparent transparent transparent #fff;
+    margin-left: 3px;
+  }
+
+  /* Icon chơi lại bằng CSS thuần */
+  .pad-restart {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid #fff;
+    border-right-color: transparent;
+    border-radius: 50%;
+    position: relative;
+    transition: transform 0.25s ease;
+  }
+
+  .pad-restart::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    right: -3px;
+    border-style: solid;
+    border-width: 0 0 7px 7px;
+    border-color: transparent transparent #fff transparent;
+    transform: rotate(45deg);
+  }
+
+  #pad button#rs:active .pad-restart {
+    transform: rotate(-200deg);
+  }
+
+  .pad-jump-label {
+    display: block;
+    letter-spacing: 0.3px;
   }
 
   #pad button.jump {
@@ -1968,8 +2036,16 @@ body {
 
   #pad button.on,
   #pad button:active {
-    background: rgba(138, 123, 255, .85);
-    transform: scale(0.96);
+    background: linear-gradient(180deg, rgba(160, 145, 255, 0.95), rgba(118, 101, 240, 0.9));
+    border-color: #f5c542;
+    transform: scale(0.92) translateY(1px);
+    box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.25), 0 0 14px rgba(138, 123, 255, 0.7),
+      inset 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  #pad button.on .pad-arrow,
+  #pad button:active .pad-arrow {
+    transform: scale(1.12);
   }
 }
 
