@@ -143,6 +143,8 @@ p.hint {
   width: min(92%, 460px);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
   animation: modalIn 0.2s ease-out;
+  max-height: 95%;
+  overflow-y: auto;
 }
 
 @keyframes modalIn {
