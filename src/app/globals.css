@@ -1398,6 +1398,75 @@ p.hint {
   font-weight: 400;
 }
 
+/* Nút phụ tuỳ chọn (Khôi phục ID & Chơi mới): ngang hàng trên PC */
+.home-sub-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.btn-sub-action {
+  flex: 0 1 190px;
+  min-height: 36px;
+  background: #1b162b;
+  border: 1px solid #3c3260;
+  color: #a79dc7;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.btn-sub-action:hover {
+  background: #27203e;
+  border-color: #8a7bff;
+  color: #f5c542;
+  transform: translateY(-1px);
+}
+
+.btn-sub-action:active {
+  transform: translateY(0);
+}
+
+.btn-sub-action.btn-sub-reset {
+  color: #c98b98;
+  border-color: #523141;
+}
+
+.btn-sub-action.btn-sub-reset:hover {
+  background: #2b1822;
+  border-color: #ff6b6b;
+  color: #ff8585;
+}
+
+/* Điện thoại: xếp dọc, nút nhỏ gọn ở giữa */
+@media (max-width: 480px) {
+  .home-sub-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-sub-action {
+    flex: none;
+    width: 62%;
+    min-width: 170px;
+    min-height: 34px;
+    font-size: 12.5px;
+  }
+}
+
 .home-footer-tips {
   display: flex;
   align-items: center;

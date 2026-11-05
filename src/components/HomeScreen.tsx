@@ -228,10 +228,10 @@ export default function HomeScreen({
   const handleResetProfile = () => {
     setToastData({
       type: 'warning',
-      title: 'Đổi tài khoản?',
+      title: 'Chơi mới?',
       message:
-        'Bạn sẽ thoát khỏi tài khoản trên thiết bị này. Tiến trình vẫn được lưu trên máy chủ, hãy sao chép ID trước để đăng nhập lại sau.',
-      confirmLabel: 'Thoát tài khoản',
+        'Bạn sẽ thoát khỏi tài khoản hiện tại trên thiết bị này để bắt đầu người chơi mới. Tiến trình cũ vẫn được lưu trên máy chủ, hãy sao chép ID trước để khôi phục lại sau.',
+      confirmLabel: 'Chơi mới',
       onConfirm: () => {
         clearPlayerSession();
         setShowEditModal(false);
@@ -351,26 +351,12 @@ export default function HomeScreen({
             </div>
           </div>
         ) : (
-          <div className="profile-new-box">
-            <div className="profile-new">
-              <span className="profile-new-icon">✨</span>
-              <div className="profile-new-text">
-                <strong>Người chơi mới</strong>
-                <span>Chưa có tiến trình trên trình duyệt này</span>
-              </div>
+          <div className="profile-new">
+            <span className="profile-new-icon">✨</span>
+            <div className="profile-new-text">
+              <strong>Người chơi mới</strong>
+              <span>Chưa có tiến trình trên trình duyệt này</span>
             </div>
-            <button
-              type="button"
-              className="btn-open-restore-id"
-              onClick={() => {
-                setRestoreIdInput('');
-                setRestoreError('');
-                setShowRestoreModal(true);
-              }}
-              title="Nhập mã ID người chơi bạn đã sao chép từ thiết bị cũ"
-            >
-              🔑 Khôi phục bằng ID
-            </button>
           </div>
         )}
       </div>
@@ -412,6 +398,35 @@ export default function HomeScreen({
             <span className="btn-sub-text">Vinh danh các cao thủ sống sót</span>
           </span>
         </button>
+
+        {/* Nút phụ tuỳ chọn: ngang hàng trên PC, xếp dọc trên điện thoại */}
+        <div className="home-sub-actions">
+          <button
+            type="button"
+            className="btn-sub-action"
+            onClick={() => {
+              setRestoreIdInput('');
+              setRestoreError('');
+              setShowRestoreModal(true);
+            }}
+            title="Nhập mã ID người chơi bạn đã sao chép từ thiết bị cũ"
+          >
+            <span className="sub-btn-icon">🔑</span>
+            <span>Khôi phục bằng ID</span>
+          </button>
+
+          {profile.hasPlayed && profile.name && (
+            <button
+              type="button"
+              className="btn-sub-action btn-sub-reset"
+              onClick={handleResetProfile}
+              title="Thoát tài khoản trên máy này để chơi mới"
+            >
+              <span className="sub-btn-icon">🔄</span>
+              <span>Chơi mới</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Hướng dẫn phím tắt */}
@@ -588,33 +603,21 @@ export default function HomeScreen({
               </div>
             )}
 
-            <div className="modal-buttons" style={{ justifyContent: 'space-between' }}>
+            <div className="modal-buttons" style={{ justifyContent: 'flex-end' }}>
               <button
                 className="btn-secondary"
-                style={{ color: '#ff6b6b', borderColor: '#6b2d3d' }}
-                onClick={handleResetProfile}
+                onClick={() => setShowEditModal(false)}
                 disabled={isSubmitting}
-                title="Thoát khỏi tài khoản trên thiết bị này (tiến trình vẫn được lưu trên máy chủ)"
               >
-                🚪 Đổi tài khoản
+                Hủy
               </button>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setShowEditModal(false)}
-                  disabled={isSubmitting}
-                >
-                  Hủy
-                </button>
-                <button
-                  className="btn-action"
-                  onClick={handleSaveEditProfile}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Đang lưu...' : 'Lưu hồ sơ'}
-                </button>
-              </div>
+              <button
+                className="btn-action"
+                onClick={handleSaveEditProfile}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Đang lưu...' : 'Lưu hồ sơ'}
+              </button>
             </div>
           </div>
         </div>
