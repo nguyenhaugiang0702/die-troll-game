@@ -13,13 +13,25 @@ const isTouchDevice = () =>
  */
 export async function enterLandscape(): Promise<void> {
   if (!isTouchDevice()) return;
+
+  // 1. Thử khóa hướng ngang bằng ScreenOrientation API (hoạt động tốt trên Android Chrome, Edge, Samsung Internet)
   try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen?.();
-    }
     await (screen.orientation as LockableOrientation).lock?.('landscape');
   } catch {
-    // Không hỗ trợ hoặc bị từ chối: dùng CSS dự phòng.
+    // Trình duyệt không hỗ trợ hoặc cần toàn màn hình trước
+  }
+
+  // 2. Thử vào toàn màn hình (fullscreen) để hỗ trợ tốt hơn cho việc khóa hướng
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+      // Khóa lại sau khi đã vào toàn màn hình (yêu cầu của một số trình duyệt Android)
+      try {
+        await (screen.orientation as LockableOrientation).lock?.('landscape');
+      } catch { }
+    }
+  } catch {
+    // Không hỗ trợ (vd. iOS Safari): CSS force-landscape sẽ đảm nhận
   }
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import HomeScreen from '@/components/HomeScreen';
 import GameCanvas from '@/components/GameCanvas';
 import { loadPlayerProgress, type PlayerProfile } from '@/lib/supabase';
-import { exitLandscape } from '@/lib/landscape';
+import { enterLandscape, exitLandscape } from '@/lib/landscape';
 import { sound } from '@/lib/sound';
 
 export default function Home() {
@@ -60,16 +60,41 @@ export default function Home() {
     })();
   }, [refreshProfile]);
 
-  // Ở màn chơi: bật CSS xoay ngang và khóa màn hình chống zoom / cuộn
+  // Ở màn chơi: khóa màn hình chống zoom / cuộn và đồng bộ tỷ lệ hiển thị khi xoay màn hình
   useEffect(() => {
     const isGame = screen === 'game';
-    document.documentElement.classList.toggle('force-landscape', isGame);
     document.documentElement.classList.toggle('in-game', isGame);
     document.body.classList.toggle('in-game', isGame);
-    return () => {
-      document.documentElement.classList.remove('force-landscape', 'in-game');
-      document.body.classList.remove('in-game');
-    };
+
+    if (isGame) {
+      void enterLandscape();
+
+      const updateDimensions = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const isPortrait = h > w;
+        // Chiều cao game ở tỷ lệ ngang: nếu máy đang dọc thì là w, nếu máy đang ngang thì là h
+        const gameH = isPortrait ? w : h;
+        const gameW = isPortrait ? h : w;
+        document.documentElement.style.setProperty('--app-h', `${gameH}px`);
+        document.documentElement.style.setProperty('--app-w', `${gameW}px`);
+        // Chỉ áp dụng class force-landscape xoay 90° nếu máy đang ở hướng dọc
+        document.documentElement.classList.toggle('force-landscape', isPortrait);
+        document.documentElement.classList.toggle('is-portrait', isPortrait);
+        document.documentElement.classList.toggle('is-landscape', !isPortrait);
+      };
+
+      updateDimensions();
+      window.addEventListener('resize', updateDimensions);
+      window.addEventListener('orientationchange', updateDimensions);
+
+      return () => {
+        document.documentElement.classList.remove('force-landscape', 'in-game', 'is-portrait', 'is-landscape');
+        document.body.classList.remove('in-game');
+        window.removeEventListener('resize', updateDimensions);
+        window.removeEventListener('orientationchange', updateDimensions);
+      };
+    }
   }, [screen]);
 
   const handleStartGame = (level: number, deaths: number, playTime: number, name: string) => {

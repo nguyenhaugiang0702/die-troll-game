@@ -18,6 +18,7 @@ import Toast from './Toast';
 import { sound } from '@/lib/sound';
 import SoundButton from './SoundButton';
 import SkinModal from './SkinModal';
+import { enterLandscape } from '@/lib/landscape';
 import {
   getSelectedSkin,
   setSelectedSkin,
@@ -752,6 +753,7 @@ export default function GameCanvas({
           height={450}
           className="game-canvas"
           onPointerDown={() => {
+            void enterLandscape();
             if (engineRef.current?.st === 'win') {
               engineRef.current.restart();
               handleSave(0, 0, 0, true);
@@ -783,6 +785,7 @@ export default function GameCanvas({
               e.currentTarget.setPointerCapture(e.pointerId);
             } catch {}
             sound.unlockAudio();
+            void enterLandscape();
             handlePadTouch(e.clientX, e.clientY);
           }}
           onPointerMove={(e) => {
@@ -865,6 +868,7 @@ export default function GameCanvas({
               e.currentTarget.setPointerCapture(e.pointerId);
             } catch {}
             sound.unlockAudio();
+            void enterLandscape();
             setIsJumping(true);
             engineRef.current?.pressKey('ArrowUp');
           }}
