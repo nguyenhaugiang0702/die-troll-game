@@ -1,4 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  getSelectedSkin,
+  setSelectedSkin,
+  SKINS,
+  setDbSkins,
+  getDbSkins,
+  resolveSkinSlug,
+  resolveSkinUuid,
+  type SkinDefinition,
+  type SkinType,
+} from './skins';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -64,6 +75,7 @@ export interface Player {
   level: number;
   deaths: number;
   play_time?: number; // thời gian chơi/hoàn thành tính bằng giây (seconds)
+  equipped_skin_id?: string;
   updated_at?: string;
 }
 
@@ -75,6 +87,7 @@ export interface PlayerProfile {
   deaths: number;
   playTime: number; // tính bằng giây
   hasPlayed: boolean;
+  equipped_skin_id?: string;
 }
 
 export interface VerifyResult {
@@ -236,6 +249,9 @@ export async function registerOrFindPlayer(
 
         const timeVal = data.play_time || 0;
         const currentAvatar = avatar || data.avatar || DEFAULT_AVATAR;
+        if (data.equipped_skin_id) {
+          setSelectedSkin(data.equipped_skin_id);
+        }
         setLocalProgress(data.level || 1, data.deaths || 0, timeVal, currentAvatar);
         return {
           id: String(data.id),
@@ -245,6 +261,7 @@ export async function registerOrFindPlayer(
           deaths: data.deaths || 0,
           playTime: timeVal,
           hasPlayed: true,
+          equipped_skin_id: data.equipped_skin_id,
         };
       }
     } catch (e) {
@@ -266,6 +283,9 @@ export async function registerOrFindPlayer(
       const timeVal = existing.play_time || 0;
       const currentAvatar = existing.avatar || avatar || DEFAULT_AVATAR;
       setPlayerId(existing.id);
+      if (existing.equipped_skin_id) {
+        setSelectedSkin(existing.equipped_skin_id);
+      }
       setLocalProgress(existing.level || 1, existing.deaths || 0, timeVal, currentAvatar);
       return {
         id: String(existing.id),
@@ -275,6 +295,7 @@ export async function registerOrFindPlayer(
         deaths: existing.deaths || 0,
         playTime: timeVal,
         hasPlayed: true,
+        equipped_skin_id: existing.equipped_skin_id,
       };
     }
   } catch (e) {
@@ -282,12 +303,15 @@ export async function registerOrFindPlayer(
   }
 
   // 3. Người chơi mới: Không gửi id, để Supabase tự sinh (auto-gen)
+  const currentSkin = getSelectedSkin();
+  const skinUuid = resolveSkinUuid(currentSkin);
   const newPayload = {
     name: trimmed,
     avatar,
     level: 1,
     deaths: 0,
     play_time: 0,
+    equipped_skin_id: skinUuid || currentSkin,
     updated_at: new Date().toISOString(),
   };
 
@@ -345,6 +369,93 @@ export async function updatePlayerAvatar(avatar: string): Promise<boolean> {
   }
 }
 
+// ─── Tải danh sách Skins trực tiếp từ Supabase Database ──────────────────────
+
+export async function fetchSkinsFromDb(): Promise<SkinDefinition[]> {
+  try {
+    const { data, error } = await supabase
+      .from('skins')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      return getDbSkins();
+    }
+
+    const mapped: SkinDefinition[] = data.map((row) => {
+      const skinType: SkinType =
+        row.unlock_type === 'level'
+          ? 'level'
+          : row.unlock_type === 'deaths'
+            ? 'deaths'
+            : row.unlock_type === 'free'
+              ? 'free'
+              : 'auto';
+
+      return {
+        id: String(row.id), // UUID chính thức từ backend Supabase (public.skins.id)
+        uuid: String(row.id),
+        slug: row.name, // Mã slug kỹ thuật: 'auto', 'wooden', 'ninja', 'box', 'thunder'...
+        name: row.display_name || row.name,
+        icon: row.icon || '👕',
+        desc: row.description || '',
+        type: skinType,
+        reqValue: Number(row.req_value) || 0,
+        previewColor: row.preview_color || '#8a7bff',
+        effects: {
+          move: row.effect_move || 'Vệt bước chân đặc trưng',
+          jump: row.effect_jump || 'Phản lực bật nhảy đặc trưng',
+          land: row.effect_land || 'Sóng xung kích tiếp đất đặc trưng',
+        },
+        sortOrder: Number(row.sort_order) || 0,
+      };
+    });
+
+    setDbSkins(mapped);
+    return mapped;
+  } catch (err) {
+    console.warn('[Supabase] Không thể tải danh sách skins từ DB, dùng cache:', err);
+    return getDbSkins();
+  }
+}
+
+// ─── Cập nhật riêng Trang phục Skin đang mặc ──────────────────────────────────
+
+export async function updatePlayerSkin(skinId: string, skinUuid?: string): Promise<boolean> {
+  setSelectedSkin(skinId);
+  const id = getPlayerId();
+  if (!id) return true;
+  try {
+    const uuid = skinUuid || resolveSkinUuid(skinId);
+    const valueToTry = uuid || skinId;
+
+    const { error } = await supabase
+      .from('players')
+      .update({
+        equipped_skin_id: valueToTry,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error && uuid && valueToTry === uuid) {
+      // Fallback về slug nếu DB schema varchar từ chối UUID
+      const slug = resolveSkinSlug(skinId);
+      await supabase
+        .from('players')
+        .update({
+          equipped_skin_id: slug,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+    }
+    return !error;
+  } catch (e) {
+    console.warn('[Supabase] Lỗi mạng khi cập nhật skin:', e);
+    return false;
+  }
+}
+
 // ─── Lưu tiến trình người chơi ───────────────────────────────────────────────
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -371,6 +482,7 @@ export async function savePlayerProgress(
       level: targetLevel,
       deaths,
       play_time: targetPlayTime,
+      equipped_skin_id: resolveSkinUuid(getSelectedSkin()) || getSelectedSkin(),
       updated_at: new Date().toISOString(),
     };
 
@@ -422,7 +534,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
       if (urlId) {
         const { data, error } = await supabase
           .from("players")
-          .select("id, name, avatar, level, deaths, play_time")
+          .select("id, name, avatar, level, deaths, play_time, equipped_skin_id")
           .eq("id", urlId)
           .maybeSingle();
 
@@ -431,6 +543,9 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
           setPlayerId(data.id);
           setPlayerName(data.name);
           setPlayerAvatar(av);
+          if (data.equipped_skin_id) {
+            setSelectedSkin(data.equipped_skin_id);
+          }
           setLocalProgress(data.level || 1, data.deaths || 0, data.play_time || 0, av);
           syncUrlWithPlayer(data.id);
           return {
@@ -441,6 +556,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
             deaths: data.deaths || 0,
             playTime: data.play_time || 0,
             hasPlayed: true,
+            equipped_skin_id: data.equipped_skin_id,
           };
         }
       }
@@ -460,19 +576,23 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     deaths: local.deaths,
     playTime: local.playTime,
     hasPlayed: Boolean(id || local.name),
+    equipped_skin_id: getSelectedSkin(),
   };
 
   if (id) {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, avatar, level, deaths, play_time')
+        .select('id, name, avatar, level, deaths, play_time, equipped_skin_id')
         .eq('id', id)
         .maybeSingle();
 
       if (data && !error) {
         const av = data.avatar || local.avatar || DEFAULT_AVATAR;
         setPlayerAvatar(av);
+        if (data.equipped_skin_id) {
+          setSelectedSkin(data.equipped_skin_id);
+        }
         return {
           id: String(data.id),
           name: data.name || local.name,
@@ -481,6 +601,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
           deaths: data.deaths || 0,
           playTime: data.play_time || local.playTime || 0,
           hasPlayed: true,
+          equipped_skin_id: data.equipped_skin_id,
         };
       }
     } catch (e) {
@@ -492,7 +613,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name, avatar, level, deaths, play_time')
+        .select('id, name, avatar, level, deaths, play_time, equipped_skin_id')
         .ilike('name', local.name)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -502,6 +623,9 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
         setPlayerId(data.id);
         const av = data.avatar || local.avatar || DEFAULT_AVATAR;
         setPlayerAvatar(av);
+        if (data.equipped_skin_id) {
+          setSelectedSkin(data.equipped_skin_id);
+        }
         return {
           id: String(data.id),
           name: data.name,
@@ -510,6 +634,7 @@ export async function loadPlayerProgress(): Promise<PlayerProfile> {
           deaths: data.deaths || 0,
           playTime: data.play_time || local.playTime || 0,
           hasPlayed: true,
+          equipped_skin_id: data.equipped_skin_id,
         };
       }
     } catch (e) {
@@ -692,7 +817,7 @@ export async function restoreAccountById(id: string): Promise<PlayerProfile> {
 
   const { data, error } = await supabase
     .from('players')
-    .select('id, name, avatar, level, deaths, play_time')
+    .select('id, name, avatar, level, deaths, play_time, equipped_skin_id')
     .eq('id', cleanId)
     .maybeSingle();
 
@@ -705,6 +830,9 @@ export async function restoreAccountById(id: string): Promise<PlayerProfile> {
   setPlayerId(data.id);
   setPlayerName(data.name);
   setPlayerAvatar(av);
+  if (data.equipped_skin_id) {
+    setSelectedSkin(data.equipped_skin_id);
+  }
   setLocalProgress(data.level || 1, data.deaths || 0, timeVal, av);
 
   return {
@@ -715,5 +843,6 @@ export async function restoreAccountById(id: string): Promise<PlayerProfile> {
     deaths: data.deaths || 0,
     playTime: timeVal,
     hasPlayed: true,
+    equipped_skin_id: data.equipped_skin_id,
   };
 }

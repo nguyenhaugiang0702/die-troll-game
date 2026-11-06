@@ -1,6 +1,6 @@
 // ─── Hệ Thống Skin & Hiệu Ứng Nhân Vật Con Rối (Die Again) ──────────────────────
 
-export type SkinType = 'auto' | 'level' | 'deaths';
+export type SkinType = 'auto' | 'free' | 'level' | 'deaths';
 
 export interface SkinEffects {
   move: string;
@@ -9,161 +9,88 @@ export interface SkinEffects {
 }
 
 export interface SkinDefinition {
-  id: string;
-  name: string;
+  id: string; // Khóa chính UUID từ Database Supabase (public.skins.id)
+  slug: string; // Mã định danh kỹ thuật để render engine Canvas: 'auto', 'wooden', 'ninja', 'box'...
+  uuid?: string; // Khóa UUID từ Database Supabase
+  name: string; // Tên hiển thị (display_name từ DB)
   icon: string;
   desc: string;
   type: SkinType;
-  reqValue?: number; // Màn yêu cầu (nếu type = 'level') hoặc Số lần chết yêu cầu (nếu type = 'deaths')
+  reqValue?: number; // Màn yêu cầu hoặc Số lần chết yêu cầu
   previewColor: string;
   effects: SkinEffects;
+  sortOrder?: number;
 }
 
-export const SKINS: SkinDefinition[] = [
-  {
-    id: 'auto',
-    name: 'Tự Động Theo Màn',
-    icon: '⚡',
-    desc: 'Tự động đổi diện mạo và hiệu ứng mới sau mỗi 10 màn chơi (Màn 1, 11, 21, 31, 41)!',
-    type: 'auto',
-    previewColor: '#8a7bff',
-    effects: {
-      move: 'Tự đổi vệt bước chân theo từng chặng màn chơi',
-      jump: 'Phản lực bật nhảy biến hóa tương ứng theo màn',
-      land: 'Sóng xung kích tiếp đất đổi mới sau mỗi 10 màn',
-    },
-  },
-  // ─── Skin Mở Khóa Theo Màn (Mỗi 10 màn 1 skin) ─────────────────────────────
-  {
-    id: 'wooden',
-    name: 'Rối Gỗ Cổ Điển',
-    icon: '🪵',
-    desc: 'Màn 1 - 10: Chú rối gỗ đơn sơ nhưng kiên cường, sinh ra để vượt qua cạm bẫy.',
-    type: 'level',
-    reqValue: 1,
-    previewColor: '#f3e9d2',
-    effects: {
-      move: 'Bụi dăm gỗ cổ điển vương lại sau gót chân',
-      jump: 'Cụm bụi đất & dăm gỗ bung nhẹ đẩy tung lên cao',
-      land: 'Sóng bụi gỗ dăm bào lan tỏa sang hai bên mặt sàn',
-    },
-  },
-  {
-    id: 'ninja',
-    name: 'Ninja Bóng Đêm',
-    icon: '🥷',
-    desc: 'Màn 11 - 20: Tung khăn đỏ phấp phới trong gió, thoắt ẩn thoắt hiện né gai nhọn.',
-    type: 'level',
-    reqValue: 11,
-    previewColor: '#2b283a',
-    effects: {
-      move: 'Bóng mờ tàn khói đen & vệt lụa đỏ thoắt ẩn thoắt hiện',
-      jump: 'Bom khói "Poof!" kèm tia ám khí đỏ đẩy vọt lên trời',
-      land: 'Khói bóng tối độn thổ tản nhanh sang hai bên',
-    },
-  },
-  {
-    id: 'flame',
-    name: 'Hỏa Thần Rực Lửa',
-    icon: '🔥',
-    desc: 'Màn 21 - 30: Sinh ra từ biển dung nham, đầu bốc lửa hừng hực không sợ bẫy.',
-    type: 'level',
-    reqValue: 21,
-    previewColor: '#ff6348',
-    effects: {
-      move: 'Vệt tàn lửa than hồng & đốm lửa bập bùng bốc lên',
-      jump: 'Phản lực lửa bốc cháy dữ dội đẩy tung người lên',
-      land: 'Sóng nhiệt rực lửa & tia lửa tóe rực rỡ mặt đất',
-    },
-  },
-  {
-    id: 'frost',
-    name: 'Thạch Anh Băng Giá',
-    icon: '❄️',
-    desc: 'Màn 31 - 40: Cơ thể kết tinh từ băng vĩnh cửu, lạnh lùng vượt qua mọi cú lừa.',
-    type: 'level',
-    reqValue: 31,
-    previewColor: '#70a1ff',
-    effects: {
-      move: 'Sương giá băng tuyết & vụn băng pha lê lấp lánh',
-      jump: 'Băng vỡ tung (Ice Shatter) với ánh pha lê xanh ngọc',
-      land: 'Vòng gai băng nứt toác & làn sương lạnh tỏa trên sàn',
-    },
-  },
-  {
-    id: 'golden',
-    name: 'Vua Hoàng Kim',
-    icon: '👑',
-    desc: 'Màn 41 - 50: Đầu đội vương miện đính hồng ngọc, bộ giáp hoàng gia của người sắp phá đảo.',
-    type: 'level',
-    reqValue: 41,
-    previewColor: '#f5c542',
-    effects: {
-      move: 'Bụi vàng kim tuyến 24k & những ngôi sao lấp lánh',
-      jump: 'Chùm pháo sao hoàng kim bung nở rực rỡ dưới chân',
-      land: 'Hào quang vương giả bừng sáng với bụi vàng & hồng ngọc',
-    },
-  },
-  // ─── Skin Mở Khóa Theo Số Lần Chết ─────────────────────────────────────────
-  {
-    id: 'bruised',
-    name: 'Rối Bầm Dập',
-    icon: '🩹',
-    desc: 'Mở khóa khi Chết ≥ 10 lần: Đầy vết thương và băng cá nhân, mắt tím ngắt vẫn không chịu lùi bước!',
-    type: 'deaths',
-    reqValue: 10,
-    previewColor: '#dcd0ff',
-    effects: {
-      move: 'Giọt mồ hôi văng ra cùng bụi đất lem luốc',
-      jump: 'Dồn hết sức bình sinh nhảy vọt, mồ hôi bắn tóe',
-      land: 'Cú ngã chấn động, sao choáng váng 💫 & bụi lem nhem',
-    },
-  },
-  {
-    id: 'ghost',
-    name: 'Hồn Ma Vất Vưởng',
-    icon: '👻',
-    desc: 'Mở khóa khi Chết ≥ 50 lần: Chết quá nhiều đến mức hóa thành bóng ma lơ lửng phát sáng.',
-    type: 'deaths',
-    reqValue: 50,
-    previewColor: '#7bed9f',
-    effects: {
-      move: 'Đốm ma trơi xanh ngọc lơ lửng không chạm đất',
-      jump: 'Luồng linh hồn xanh dạ quang nâng người nhẹ tênh',
-      land: 'Sương ma trôi lan êm đềm như không trọng lực',
-    },
-  },
-  {
-    id: 'reaper',
-    name: 'Thần Chết Mini',
-    icon: '☠️',
-    desc: 'Mở khóa khi Chết ≥ 100 lần: Áo choàng tử thần và lưỡi hái sắc bén. Đã kết thân với Thần Chết!',
-    type: 'deaths',
-    reqValue: 100,
-    previewColor: '#1e1830',
-    effects: {
-      move: 'Hắc khí tím thẫm & tàn tro ác mộng cuộn sau lưng',
-      jump: 'Vệt chém bóng tối xoáy tử khí đen tím đẩy vút lên',
-      land: 'Khói địa ngục cuộn trào sang hai bên với ánh đỏ tử thần',
-    },
-  },
-  {
-    id: 'troll',
-    name: 'Thánh Troll Bất Tử',
-    icon: '🌈',
-    desc: 'Mở khóa khi Chết ≥ 200 lần: Huyền thoại bất tử! Cơ thể phát sáng Neon cầu vồng RGB rực rỡ.',
-    type: 'deaths',
-    reqValue: 200,
-    previewColor: '#ff3838',
-    effects: {
-      move: 'Dải vệt sáng cầu vồng RGB Neon đổi màu rực rỡ',
-      jump: 'Pháo hoa cầu vồng Mini Popper bung tỏa sắc màu rực rỡ',
-      land: 'Bữa tiệc Party Confetti bung nổ sắc màu khắp sàn',
-    },
-  },
-];
+// Danh mục Skins: Khởi tạo rỗng, 100% dữ liệu được tải động từ Database Supabase
+export const SKINS: SkinDefinition[] = [];
 
-// Lấy skin đang lưu
+// Bộ nhớ đệm danh mục Skins trong client
+let dbSkinsCache: SkinDefinition[] = [];
+let memorySkinMap: Record<string, string> = {};
+
+// Khởi tạo cache từ localStorage nếu có sẵn từ phiên trước
+function initLocalSkinsCache(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const rawSkins = localStorage.getItem('puppet_db_skins');
+    if (rawSkins) {
+      const parsed = JSON.parse(rawSkins);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        dbSkinsCache = parsed;
+        if (SKINS.length === 0) {
+          SKINS.push(...parsed);
+        }
+      }
+    }
+    const rawMap = localStorage.getItem('puppet_skin_map');
+    if (rawMap) {
+      memorySkinMap = JSON.parse(rawMap);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+initLocalSkinsCache();
+
+// Cập nhật danh sách Skins từ Database vào bộ nhớ
+export function setDbSkins(skins: SkinDefinition[]): void {
+  dbSkinsCache = skins;
+  SKINS.splice(0, SKINS.length, ...skins);
+
+  // Xây dựng bản đồ ánh xạ hai chiều: UUID <-> Slug
+  for (const s of skins) {
+    const slug = s.slug || s.id;
+    if (s.id) memorySkinMap[s.id] = slug;
+    if (s.uuid) {
+      memorySkinMap[s.uuid] = slug;
+      memorySkinMap[`uuid_of_${slug}`] = s.uuid;
+    }
+    if (s.slug) {
+      memorySkinMap[s.slug] = slug;
+    }
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem('puppet_db_skins', JSON.stringify(skins));
+      localStorage.setItem('puppet_skin_map', JSON.stringify(memorySkinMap));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Lấy danh sách Skins hiện tại (từ DB cache)
+export function getDbSkins(): SkinDefinition[] {
+  if (dbSkinsCache.length > 0) return dbSkinsCache;
+  if (SKINS.length > 0) return SKINS;
+  initLocalSkinsCache();
+  return dbSkinsCache.length > 0 ? dbSkinsCache : SKINS;
+}
+
+// Lấy skin đang lưu trong localStorage
 export function getSelectedSkin(): string {
   if (typeof localStorage === 'undefined') return 'auto';
   return localStorage.getItem('puppet_selected_skin') || 'auto';
@@ -176,9 +103,58 @@ export function setSelectedSkin(skinId: string): void {
   }
 }
 
+// Tìm skin theo bất kỳ mã nào (id UUID, uuid, hoặc slug)
+export function findSkinByIdentifier(
+  skinsList: SkinDefinition[] = getDbSkins(),
+  idOrUuidOrSlug: string
+): SkinDefinition | undefined {
+  if (!idOrUuidOrSlug) return undefined;
+  const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
+  return list.find(
+    (s) =>
+      s.id === idOrUuidOrSlug ||
+      (s.uuid && s.uuid === idOrUuidOrSlug) ||
+      (s.slug && s.slug === idOrUuidOrSlug)
+  );
+}
+
+// Chuyển UUID về skin slug (để engine Canvas luôn vẽ đúng)
+export function resolveSkinSlug(
+  idOrUuid: string,
+  skinsList: SkinDefinition[] = getDbSkins()
+): string {
+  if (!idOrUuid || idOrUuid === 'auto') return 'auto';
+  const found = findSkinByIdentifier(skinsList, idOrUuid);
+  if (found) return found.slug || found.id;
+
+  if (memorySkinMap[idOrUuid]) return memorySkinMap[idOrUuid];
+
+  return idOrUuid;
+}
+
+// Lấy UUID tương ứng của skin (để gửi lên database Supabase)
+export function resolveSkinUuid(
+  idOrUuidOrSlug: string,
+  skinsList: SkinDefinition[] = getDbSkins()
+): string | undefined {
+  if (!idOrUuidOrSlug) return undefined;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(idOrUuidOrSlug)) return idOrUuidOrSlug;
+
+  const found = findSkinByIdentifier(skinsList, idOrUuidOrSlug);
+  if (found?.uuid) return found.uuid;
+  if (found?.id && uuidRegex.test(found.id)) return found.id;
+
+  if (memorySkinMap[`uuid_of_${idOrUuidOrSlug}`]) {
+    return memorySkinMap[`uuid_of_${idOrUuidOrSlug}`];
+  }
+
+  return undefined;
+}
+
 // Kiểm tra một skin đã được mở khóa chưa
 export function isSkinUnlocked(skin: SkinDefinition, currentLevel: number, totalDeaths: number): boolean {
-  if (skin.type === 'auto') return true;
+  if (skin.type === 'auto' || skin.type === 'free') return true;
   if (skin.type === 'level') {
     return (currentLevel || 1) >= (skin.reqValue || 1);
   }
@@ -188,18 +164,71 @@ export function isSkinUnlocked(skin: SkinDefinition, currentLevel: number, total
   return false;
 }
 
-// Xác định skin thực tế hiển thị khi chơi (nếu chọn 'auto' thì tự đổi theo màn)
-export function resolveActiveSkinId(selectedSkinId: string, levelNumber: number): string {
-  if (selectedSkinId && selectedSkinId !== 'auto') {
-    return selectedSkinId;
+// Xác định skin thực tế hiển thị khi chơi dựa trên dữ liệu DB (nếu là 'auto' thì tự đổi theo màn từ DB)
+export function resolveActiveSkinId(
+  selectedSkinId: string,
+  levelNumber: number,
+  skinsList: SkinDefinition[] = getDbSkins()
+): string {
+  const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
+  const found = findSkinByIdentifier(list, selectedSkinId);
+  const slug = found ? (found.slug || found.id) : resolveSkinSlug(selectedSkinId, list);
+
+  if (slug && slug !== 'auto') {
+    return slug;
   }
-  // Mặc định tự động theo màn
+
+  // Tự động theo màn dựa trên danh sách skin từ DB
   const lv = Math.max(1, levelNumber || 1);
+  const levelSkins = list
+    .filter((s) => s.type === 'level' && typeof s.reqValue === 'number')
+    .sort((a, b) => (b.reqValue || 0) - (a.reqValue || 0));
+
+  for (const s of levelSkins) {
+    if (lv >= (s.reqValue || 1)) {
+      return s.slug || s.id;
+    }
+  }
+
+  // Fallback an toàn nếu chưa tải kịp DB
   if (lv <= 10) return 'wooden';
   if (lv <= 20) return 'ninja';
   if (lv <= 30) return 'flame';
   if (lv <= 40) return 'frost';
   return 'golden';
+}
+
+// Tự động tìm skin phù hợp với mốc màn chơi (level)
+export function getSkinForLevel(
+  levelNumber: number,
+  skinsList: SkinDefinition[] = getDbSkins()
+): SkinDefinition | undefined {
+  const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
+  const exact = list.find((s) => s.type === 'level' && s.reqValue === levelNumber);
+  if (exact) return exact;
+
+  const levelSkins = list
+    .filter((s) => s.type === 'level' && typeof s.reqValue === 'number')
+    .sort((a, b) => (b.reqValue || 0) - (a.reqValue || 0));
+
+  return levelSkins.find((s) => levelNumber >= (s.reqValue || 1));
+}
+
+// Kiểm tra xem khi tăng từ oldLevel lên newLevel có chạm mốc mở khóa skin level mới không (ví dụ: màn 20 qua 21)
+export function checkMilestoneLevelSkin(
+  oldLevel: number,
+  newLevel: number,
+  skinsList: SkinDefinition[] = getDbSkins()
+): SkinDefinition | undefined {
+  if (newLevel <= oldLevel) return undefined;
+  const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
+  return list.find(
+    (s) =>
+      s.type === 'level' &&
+      typeof s.reqValue === 'number' &&
+      s.reqValue > oldLevel &&
+      s.reqValue <= newLevel
+  );
 }
 
 // ─── Hệ Thống Hạt Hiệu Ứng (Skin Particle System) ──────────────────────────────
@@ -213,7 +242,7 @@ export interface SkinParticle {
   maxLife: number;
   size: number;
   color: string;
-  shape: 'circle' | 'square' | 'star' | 'ring' | 'smoke' | 'shard' | 'drop';
+  shape: 'circle' | 'square' | 'star' | 'ring' | 'smoke' | 'shard' | 'drop' | 'lightning';
   rotation?: number;
   vRot?: number;
   alpha?: number;
@@ -248,7 +277,7 @@ export function spawnSkinMoveEffect(
       alpha: 0.7,
     });
   } else if (skinId === 'ninja') {
-    // Khói bóng tối
+    // Khói ánh trăng bạc & bóng đêm huyền ảo (nổi bật trên nền tối)
     particles.push({
       x: footX + (Math.random() - 0.5) * 4,
       y: footY - 2,
@@ -257,27 +286,27 @@ export function spawnSkinMoveEffect(
       life: 16,
       maxLife: 16,
       size: 3.2 + Math.random() * 2.2,
-      color: 'rgba(38, 34, 52, 0.75)',
+      color: Math.random() > 0.4 ? 'rgba(188, 198, 220, 0.75)' : 'rgba(132, 120, 168, 0.8)',
       shape: 'smoke',
       gravity: -0.02,
-      alpha: 0.65,
+      alpha: 0.75,
     });
-    // Vệt lụa đỏ
-    if (tick % 3 === 0) {
+    // Vệt lụa đỏ huyết kiếm phấp phới
+    if (tick % 2 === 0) {
       particles.push({
         x: footX - facing * 4,
-        y: footY - 6,
-        vx: -facing * (0.8 + Math.random() * 0.4),
+        y: footY - 5,
+        vx: -facing * (0.8 + Math.random() * 0.5),
         vy: -0.3,
-        life: 12,
-        maxLife: 12,
-        size: 2.2,
+        life: 13,
+        maxLife: 13,
+        size: 2.4,
         color: '#ff4757',
         shape: 'shard',
         rotation: Math.random() * Math.PI,
-        vRot: 0.1,
+        vRot: 0.12,
         gravity: 0.04,
-        alpha: 0.85,
+        alpha: 0.9,
       });
     }
   } else if (skinId === 'flame') {
@@ -374,7 +403,7 @@ export function spawnSkinMoveEffect(
       alpha: 0.75,
     });
   } else if (skinId === 'reaper') {
-    // Hắc khí tím & đốm đỏ tử thần
+    // Tử khí tím dạ quang & đốm lửa địa ngục (tương phản mạnh trên nền tối)
     particles.push({
       x: footX + (Math.random() - 0.5) * 4,
       y: footY - 2,
@@ -383,42 +412,246 @@ export function spawnSkinMoveEffect(
       life: 18,
       maxLife: 18,
       size: 3.5 + Math.random() * 2.2,
-      color: '#2c1b4d',
+      color: Math.random() > 0.35 ? 'rgba(165, 94, 234, 0.85)' : 'rgba(136, 84, 208, 0.8)',
       shape: 'smoke',
       gravity: -0.04,
-      alpha: 0.8,
+      alpha: 0.85,
+    });
+    // Tàn lửa linh hồn đỏ rực
+    if (tick % 2 === 0) {
+      particles.push({
+        x: footX - facing * 4 + (Math.random() - 0.5) * 4,
+        y: footY - 2,
+        vx: -facing * 0.4 + (Math.random() - 0.5) * 0.4,
+        vy: -0.5 - Math.random() * 0.5,
+        life: 14,
+        maxLife: 14,
+        size: 2.0,
+        color: '#ff3838',
+        shape: 'circle',
+        gravity: -0.05,
+        alpha: 0.95,
+      });
+    }
+  } else if (skinId === 'box') {
+    // Vụn bìa carton, băng dính & xốp trắng lả tả
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY,
+      vx: -facing * (0.5 + Math.random() * 0.6),
+      vy: -0.4 - Math.random() * 0.5,
+      life: 14,
+      maxLife: 14,
+      size: 2.2 + Math.random() * 1.5,
+      color: Math.random() > 0.4 ? '#e1b12c' : '#f5cd79',
+      shape: 'shard',
+      rotation: Math.random() * Math.PI,
+      vRot: 0.1,
+      gravity: 0.08,
+      alpha: 0.85,
+    });
+    if (tick % 2 === 0) {
+      particles.push({
+        x: footX + (Math.random() - 0.5) * 4,
+        y: footY - 1,
+        vx: -facing * 0.3,
+        vy: -0.5,
+        life: 12,
+        maxLife: 12,
+        size: 1.6,
+        color: '#ffffff',
+        shape: 'circle',
+        gravity: 0.04,
+        alpha: 0.9,
+      });
+    }
+  } else if (skinId === 'chicken') {
+    // Lông gà vàng óng & trắng muốt chao lượn rụng theo bước chạy
+    const isGold = Math.random() > 0.5;
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY - 3,
+      vx: -facing * (0.4 + Math.random() * 0.5),
+      vy: -0.3 - Math.random() * 0.4,
+      life: 18,
+      maxLife: 18,
+      size: 2.4 + Math.random() * 1.2,
+      color: isGold ? '#f6b93b' : '#ffffff',
+      shape: 'drop',
+      rotation: Math.random() * Math.PI,
+      vRot: isGold ? 0.08 : -0.07,
+      gravity: 0.02,
+      alpha: 0.95,
+    });
+    if (tick % 3 === 0) {
+      particles.push({
+        x: footX - facing * 3,
+        y: footY,
+        vx: -facing * 0.6,
+        vy: -0.2,
+        life: 10,
+        maxLife: 10,
+        size: 1.8,
+        color: '#ff4757',
+        shape: 'shard',
+        gravity: 0.08,
+        alpha: 0.9,
+      });
+    }
+  } else if (skinId === 'zombie') {
+    // Bong bóng độc dịch xanh neon sủi bọt & khói axit
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY - 2,
+      vx: -facing * (0.3 + Math.random() * 0.4),
+      vy: -0.6 - Math.random() * 0.5,
+      life: 18,
+      maxLife: 18,
+      size: 2.5 + Math.random() * 1.8,
+      color: Math.random() > 0.4 ? '#55efc4' : '#00cec9',
+      shape: 'circle',
+      gravity: -0.04,
+      alpha: 0.9,
+    });
+    if (tick % 2 === 0) {
+      particles.push({
+        x: footX + (Math.random() - 0.5) * 6,
+        y: footY,
+        vx: -facing * 0.2,
+        vy: 0.4,
+        life: 14,
+        maxLife: 14,
+        size: 2.0,
+        color: '#00b894',
+        shape: 'drop',
+        gravity: 0.12,
+        alpha: 0.85,
+      });
+    }
+  } else if (skinId === 'clown') {
+    // Bóng xiếc mini rực rỡ & tàn pháo kim tuyến rơi rụng
+    const clownColors = ['#ff7675', '#ffd32a', '#00cec9', '#a29bfe', '#ff9f43'];
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 6,
+      y: footY - 2,
+      vx: -facing * (0.4 + Math.random() * 0.6),
+      vy: -0.4 - Math.random() * 0.5,
+      life: 16,
+      maxLife: 16,
+      size: 2.6 + Math.random() * 1.5,
+      color: clownColors[Math.floor(Math.random() * clownColors.length)],
+      shape: 'circle',
+      gravity: 0.06,
+      alpha: 0.95,
     });
     if (tick % 2 === 0) {
       particles.push({
         x: footX - facing * 4,
-        y: footY - 1,
-        vx: -facing * 0.3,
-        vy: -0.3,
+        y: footY - 4,
+        vx: -facing * 0.5,
+        vy: -0.5,
         life: 12,
         maxLife: 12,
-        size: 1.8,
-        color: '#ff3838',
-        shape: 'circle',
-        gravity: -0.02,
+        size: 2.0,
+        color: '#ffeaa7',
+        shape: 'star',
+        rotation: tick * 0.1,
         alpha: 0.9,
       });
     }
-  } else if (skinId === 'troll') {
-    // Vệt cầu vồng RGB Neon
-    const hue = Math.floor((tick * 10) % 360);
+  } else if (skinId === 'cyborg') {
+    // Khối năng lượng Hologram Cyan/Magenta phân rã & tia lửa điện
+    const isCyan = tick % 2 === 0;
     particles.push({
       x: footX + (Math.random() - 0.5) * 6,
-      y: footY,
-      vx: -facing * (0.5 + Math.random() * 0.7),
-      vy: -0.5 - Math.random() * 0.6,
-      life: 18,
-      maxLife: 18,
-      size: 2.8 + Math.random() * 2,
-      color: `hsl(${hue}, 100%, 65%)`,
-      shape: Math.random() > 0.5 ? 'star' : 'square',
+      y: footY - 2,
+      vx: -facing * (0.5 + Math.random() * 0.6),
+      vy: -0.5 - Math.random() * 0.5,
+      life: 16,
+      maxLife: 16,
+      size: 2.6 + Math.random() * 1.8,
+      color: isCyan ? '#00f2fe' : '#ff007f',
+      shape: 'square',
       rotation: Math.random() * Math.PI,
       vRot: 0.12,
-      gravity: 0.05,
+      gravity: -0.02,
+      alpha: 0.95,
+    });
+    // Tia chập điện hồ quang
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY - 1,
+      vx: -facing * 0.3 + (Math.random() - 0.5) * 0.4,
+      vy: -0.3,
+      life: 10,
+      maxLife: 10,
+      size: 3.2,
+      color: '#00f2fe',
+      shape: 'lightning',
+      rotation: Math.random() * Math.PI,
+      alpha: 1,
+    });
+  } else if (skinId === 'thunder') {
+    // Tia sét vàng xanh nổ lách tách & vệt hồ quang điện phát sáng
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 6,
+      y: footY - 2,
+      vx: -facing * (0.6 + Math.random() * 0.8),
+      vy: -0.4 - Math.random() * 0.6,
+      life: 14,
+      maxLife: 14,
+      size: 4.5 + Math.random() * 2.2,
+      color: Math.random() > 0.4 ? '#fff200' : '#00d2d3',
+      shape: 'lightning',
+      rotation: (Math.random() - 0.5) * 1.5,
+      stroke: true,
+      alpha: 1,
+    });
+    // Đốm plasma điện tích
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY,
+      vx: -facing * 0.4,
+      vy: -0.8 - Math.random() * 0.6,
+      life: 12,
+      maxLife: 12,
+      size: 2.8,
+      color: '#ffffff',
+      shape: 'star',
+      gravity: -0.06,
+      alpha: 0.95,
+    });
+  } else if (skinId === 'angel') {
+    // Dải bụi sao thiên giới vàng kim tuyến & lông vũ thần thánh
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 6,
+      y: footY - 2,
+      vx: -facing * (0.3 + Math.random() * 0.5),
+      vy: -0.5 - Math.random() * 0.5,
+      life: 20,
+      maxLife: 20,
+      size: 3.2 + Math.random() * 1.8,
+      color: '#f9ca24',
+      shape: 'star',
+      rotation: Math.random() * Math.PI,
+      vRot: 0.08,
+      gravity: 0.02,
+      alpha: 0.95,
+    });
+    // Lông vũ thiên thần trắng muốt chao lượn
+    particles.push({
+      x: footX + (Math.random() - 0.5) * 4,
+      y: footY - 4,
+      vx: -facing * 0.3 + Math.sin(tick * 0.2) * 0.4,
+      vy: -0.3,
+      life: 22,
+      maxLife: 22,
+      size: 2.8,
+      color: '#ffffff',
+      shape: 'drop',
+      rotation: Math.sin(tick * 0.15) * 0.6,
+      vRot: 0.05,
+      gravity: 0.015,
       alpha: 0.95,
     });
   }
@@ -450,7 +683,7 @@ export function spawnSkinJumpEffect(
       });
     }
   } else if (skinId === 'ninja') {
-    // Bom khói đen "Poof!"
+    // Bom khói ánh trăng "Poof!" bạc & tím khói bốc lên rõ nét
     for (let i = 0; i < 9; i++) {
       particles.push({
         x: x + (Math.random() - 0.5) * 10,
@@ -460,19 +693,19 @@ export function spawnSkinJumpEffect(
         life: 18,
         maxLife: 18,
         size: 4 + Math.random() * 3,
-        color: 'rgba(35, 30, 48, 0.85)',
+        color: i % 2 === 0 ? 'rgba(200, 214, 229, 0.85)' : 'rgba(140, 125, 180, 0.85)',
         shape: 'smoke',
         gravity: -0.02,
-        alpha: 0.8,
+        alpha: 0.85,
       });
     }
-    // 2 tia ám khí đỏ vụt xuống
-    [-1.8, 1.8].forEach((vx) => {
+    // Tia ám khí & phi tiêu lụa đỏ rực vụt xuống
+    [-2, 0, 2].forEach((vx) => {
       particles.push({
-        x,
+        x: x + vx * 2,
         y: footY - 4,
         vx,
-        vy: 2.2,
+        vy: 2.4,
         life: 14,
         maxLife: 14,
         size: 2.8,
@@ -480,7 +713,7 @@ export function spawnSkinJumpEffect(
         shape: 'shard',
         rotation: Math.PI / 4,
         gravity: 0.05,
-        alpha: 0.9,
+        alpha: 0.95,
       });
     });
   } else if (skinId === 'flame') {
@@ -615,7 +848,7 @@ export function spawnSkinJumpEffect(
       });
     }
   } else if (skinId === 'reaper') {
-    // Vệt chém tử khí đen tím
+    // Cụm tử khí tím dạ quang bùng nổ khi bật nhảy
     for (let i = 0; i < 8; i++) {
       particles.push({
         x: x + (Math.random() - 0.5) * 10,
@@ -625,25 +858,42 @@ export function spawnSkinJumpEffect(
         life: 18,
         maxLife: 18,
         size: 3.8 + Math.random() * 2.5,
-        color: '#2c1b4d',
+        color: i % 2 === 0 ? 'rgba(165, 94, 234, 0.85)' : 'rgba(190, 46, 221, 0.85)',
         shape: 'smoke',
         gravity: -0.02,
         alpha: 0.85,
       });
     }
+    // Vòng ma pháp địa ngục đỏ rực
     particles.push({
       x,
       y: footY,
       vx: 0,
       vy: 0,
-      life: 14,
-      maxLife: 14,
-      size: 4,
+      life: 15,
+      maxLife: 15,
+      size: 4.5,
       color: '#ff3838',
       shape: 'ring',
       stroke: true,
-      alpha: 0.8,
+      alpha: 0.95,
     });
+    // Tàn lửa linh hồn đỏ bốc cháy
+    for (let i = 0; i < 3; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 6,
+        y: footY,
+        vx: (Math.random() - 0.5) * 2.5,
+        vy: -0.5 - Math.random() * 1.5,
+        life: 14,
+        maxLife: 14,
+        size: 2,
+        color: '#ff4757',
+        shape: 'circle',
+        gravity: -0.03,
+        alpha: 0.9,
+      });
+    }
   } else if (skinId === 'troll') {
     // Pháo hoa cầu vồng rực rỡ
     const colors = ['#ff3838', '#ff9f1a', '#ffd32a', '#2ed573', '#1e90ff', '#a55eea'];
@@ -666,6 +916,301 @@ export function spawnSkinJumpEffect(
         alpha: 0.95,
       });
     }
+  } else if (skinId === 'box') {
+    // Bung nắp thùng carton! Miếng bìa carton & xốp trắng nẩy tưng tưng
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 12,
+        y: footY,
+        vx: (Math.random() - 0.5) * 4,
+        vy: 1.2 + Math.random() * 2.4,
+        life: 16,
+        maxLife: 16,
+        size: 2.8 + Math.random() * 2,
+        color: i % 2 === 0 ? '#e1b12c' : '#f5cd79',
+        shape: 'shard',
+        rotation: Math.random() * Math.PI,
+        gravity: 0.08,
+        alpha: 0.9,
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 8,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 1.0 + Math.random() * 2.0,
+        life: 14,
+        maxLife: 14,
+        size: 2,
+        color: '#ffffff',
+        shape: 'circle',
+        gravity: 0.05,
+        alpha: 0.95,
+      });
+    }
+  } else if (skinId === 'chicken') {
+    // Đập cánh "Cục tác!" bay vút, bão lông gà & đốm vàng bung tỏa
+    for (let i = 0; i < 12; i++) {
+      const isGold = i % 2 === 0;
+      particles.push({
+        x: x + (Math.random() - 0.5) * 10,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3.8,
+        vy: 0.8 + Math.random() * 2.5,
+        life: 20,
+        maxLife: 20,
+        size: 3.0 + Math.random() * 1.5,
+        color: isGold ? '#f6b93b' : '#ffffff',
+        shape: 'drop',
+        rotation: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 0.15,
+        gravity: 0.02,
+        alpha: 0.95,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 14,
+      maxLife: 14,
+      size: 4,
+      color: '#f6b93b',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.85,
+    });
+  } else if (skinId === 'zombie') {
+    // Gầm rú bật nảy! Vụ nổ độc dịch axit xanh & vụn xương
+    for (let i = 0; i < 10; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 12,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3.5,
+        vy: 1.0 + Math.random() * 2.5,
+        life: 18,
+        maxLife: 18,
+        size: 3.5 + Math.random() * 2.5,
+        color: i % 2 === 0 ? '#55efc4' : '#00cec9',
+        shape: 'smoke',
+        gravity: -0.03,
+        alpha: 0.85,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 15,
+      maxLife: 15,
+      size: 4.8,
+      color: '#00cec9',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.95,
+    });
+  } else if (skinId === 'clown') {
+    // Tung bóng rạp xiếc "BÙM"! Pháo giấy sao sắc màu bắn tung tóe
+    const clownColors = ['#ff7675', '#ffd32a', '#00cec9', '#a29bfe', '#ff9f43', '#ffffff'];
+    for (let i = 0; i < 14; i++) {
+      const angle = (Math.PI * 2 * i) / 14;
+      const speed = 2.0 + Math.random() * 2.5;
+      particles.push({
+        x,
+        y: footY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed + 0.4,
+        life: 18,
+        maxLife: 18,
+        size: 3.0 + Math.random() * 1.8,
+        color: clownColors[i % clownColors.length],
+        shape: i % 2 === 0 ? 'circle' : 'star',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.15,
+        gravity: 0.08,
+        alpha: 0.95,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 14,
+      maxLife: 14,
+      size: 5,
+      color: '#ff7675',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.9,
+    });
+  } else if (skinId === 'cyborg') {
+    // Phản lực Plasma cực đại! Vòng sóng siêu âm & laser hồng
+    for (let i = 0; i < 14; i++) {
+      const isCyan = i % 2 === 0;
+      particles.push({
+        x: x + (Math.random() - 0.5) * 12,
+        y: footY,
+        vx: (Math.random() - 0.5) * 4,
+        vy: 2.0 + Math.random() * 2.8,
+        life: 18,
+        maxLife: 18,
+        size: 3.2 + Math.random() * 2,
+        color: isCyan ? '#00f2fe' : '#ff007f',
+        shape: 'square',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.15,
+        gravity: -0.02,
+        alpha: 0.95,
+      });
+    }
+    // 2 vòng sóng xung kích kép Sonic
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 16,
+      maxLife: 16,
+      size: 4.5,
+      color: '#00f2fe',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 18,
+      maxLife: 18,
+      size: 6.5,
+      color: '#ff007f',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.9,
+    });
+    // Tia chập điện
+    for (let i = 0; i < 4; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 10,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3,
+        vy: -0.5 - Math.random() * 1.5,
+        life: 12,
+        maxLife: 12,
+        size: 4.0,
+        color: '#00f2fe',
+        shape: 'lightning',
+        rotation: Math.random() * Math.PI,
+        alpha: 1,
+      });
+    }
+  } else if (skinId === 'thunder') {
+    // Sét giáng từ trời! Chùm sét phân nhánh & vòng plasma nổ bùng
+    for (let i = 0; i < 12; i++) {
+      const isYellow = i % 2 === 0;
+      particles.push({
+        x: x + (Math.random() - 0.5) * 14,
+        y: footY,
+        vx: (Math.random() - 0.5) * 4.5,
+        vy: 1.5 + Math.random() * 3.0,
+        life: 16,
+        maxLife: 16,
+        size: 5.0 + Math.random() * 3.0,
+        color: isYellow ? '#fff200' : '#00d2d3',
+        shape: 'lightning',
+        rotation: (Math.random() - 0.5) * Math.PI,
+        stroke: true,
+        alpha: 1,
+      });
+    }
+    // Vòng ma trận điện tích Plasma cực lớn
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 18,
+      maxLife: 18,
+      size: 6.5,
+      color: '#fff200',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
+    // Hạt sao điện tích chói lòa
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 8,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3.5,
+        vy: -0.8 - Math.random() * 2.0,
+        life: 14,
+        maxLife: 14,
+        size: 3.2,
+        color: '#ffffff',
+        shape: 'star',
+        gravity: -0.05,
+        alpha: 1,
+      });
+    }
+  } else if (skinId === 'angel') {
+    // Cất cánh thăng hoa! Luồng hào quang vàng kim & bão lông vũ thánh
+    for (let i = 0; i < 16; i++) {
+      const isGold = i % 2 === 0;
+      particles.push({
+        x: x + (Math.random() - 0.5) * 14,
+        y: footY,
+        vx: (Math.random() - 0.5) * 4.0,
+        vy: 1.0 + Math.random() * 3.2,
+        life: 22,
+        maxLife: 22,
+        size: 3.5 + Math.random() * 2.5,
+        color: isGold ? '#f9ca24' : '#fff3cd',
+        shape: 'star',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.1,
+        gravity: -0.02,
+        alpha: 0.95,
+      });
+    }
+    // Lông vũ thiên thần trắng muốt bung nở
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 10,
+        y: footY,
+        vx: (Math.random() - 0.5) * 3.0,
+        vy: -0.5 - Math.random() * 1.5,
+        life: 24,
+        maxLife: 24,
+        size: 3.2,
+        color: '#ffffff',
+        shape: 'drop',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.06,
+        gravity: 0.015,
+        alpha: 1,
+      });
+    }
+    // Vòng thánh địa hoàng kim rực rỡ
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 20,
+      maxLife: 20,
+      size: 7.0,
+      color: '#f9ca24',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
   }
 }
 
@@ -712,7 +1257,7 @@ export function spawnSkinLandEffect(
       alpha: 0.6,
     });
   } else if (skinId === 'ninja') {
-    // Khói bóng tối tản nhanh sang hai bên
+    // Khói ánh trăng bạc & tím dạ hành tản nhanh sang hai bên
     const total = Math.floor(10 * countMult);
     for (let i = 0; i < total; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -724,10 +1269,10 @@ export function spawnSkinLandEffect(
         life: 18,
         maxLife: 18,
         size: 4 + Math.random() * 3,
-        color: 'rgba(35, 30, 48, 0.8)',
+        color: i % 2 === 0 ? 'rgba(195, 207, 225, 0.82)' : 'rgba(135, 120, 175, 0.8)',
         shape: 'smoke',
         gravity: -0.02,
-        alpha: 0.8,
+        alpha: 0.85,
       });
     }
     // Vệt đỏ sắc lướt ngang sàn
@@ -735,16 +1280,16 @@ export function spawnSkinLandEffect(
       particles.push({
         x,
         y: footY - 1,
-        vx: side * 3.5 * countMult,
+        vx: side * 3.8 * countMult,
         vy: -0.2,
-        life: 12,
-        maxLife: 12,
-        size: 2.6,
+        life: 13,
+        maxLife: 13,
+        size: 2.8,
         color: '#ff4757',
         shape: 'shard',
         rotation: 0,
         gravity: 0.02,
-        alpha: 0.9,
+        alpha: 0.95,
       });
     });
   } else if (skinId === 'flame') {
@@ -904,7 +1449,7 @@ export function spawnSkinLandEffect(
       });
     }
   } else if (skinId === 'reaper') {
-    // Khói địa ngục cuộn trào sang hai bên
+    // Tử khí tím địa ngục cuộn trào sang hai bên
     const total = Math.floor(10 * countMult);
     for (let i = 0; i < total; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -916,25 +1461,43 @@ export function spawnSkinLandEffect(
         life: 20,
         maxLife: 20,
         size: 4.2 + Math.random() * 3,
-        color: '#2c1b4d',
+        color: i % 2 === 0 ? 'rgba(165, 94, 234, 0.85)' : 'rgba(142, 68, 173, 0.8)',
         shape: 'smoke',
         gravity: -0.03,
         alpha: 0.85,
       });
     }
+    // Vòng ma pháp địa ngục đỏ rực lan tỏa mạnh
     particles.push({
       x,
       y: footY,
       vx: 0,
       vy: 0,
-      life: 16,
-      maxLife: 16,
-      size: 7 * countMult,
+      life: 18,
+      maxLife: 18,
+      size: 7.5 * countMult,
       color: '#ff3838',
       shape: 'ring',
       stroke: true,
-      alpha: 0.8,
+      alpha: 0.95,
     });
+    // Tàn lửa linh hồn bốc lên từ mặt đất
+    for (let i = 0; i < 4; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * (3 + Math.random() * 8),
+        y: footY,
+        vx: side * (0.5 + Math.random() * 1.2),
+        vy: -0.8 - Math.random() * 1.2,
+        life: 16,
+        maxLife: 16,
+        size: 2.2,
+        color: '#ff3838',
+        shape: 'circle',
+        gravity: -0.05,
+        alpha: 0.9,
+      });
+    }
   } else if (skinId === 'troll') {
     // Bữa tiệc Party Confetti bung nổ sắc màu khắp sàn
     const colors = ['#ff3838', '#ff9f1a', '#ffd32a', '#2ed573', '#1e90ff', '#a55eea'];
@@ -969,6 +1532,310 @@ export function spawnSkinLandEffect(
       shape: 'ring',
       stroke: true,
       alpha: 0.9,
+    });
+  } else if (skinId === 'box') {
+    // Rơi bịch xuống sàn, vụn bìa & mút xốp văng dạt hai bên
+    const total = Math.floor(10 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * 4,
+        y: footY - 1,
+        vx: side * (2.0 + Math.random() * 3.0) * countMult,
+        vy: -0.4 - Math.random() * 0.8,
+        life: 16,
+        maxLife: 16,
+        size: 3.0 + Math.random() * 2.0,
+        color: i % 2 === 0 ? '#e1b12c' : '#f5cd79',
+        shape: 'shard',
+        rotation: Math.random() * Math.PI,
+        gravity: 0.08,
+        alpha: 0.9,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 14,
+      maxLife: 14,
+      size: 6.0 * countMult,
+      color: '#e1b12c',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.85,
+    });
+  } else if (skinId === 'chicken') {
+    // Hạ cánh tấu hài bẹp dí, lông vũ & bụi vàng bay tứ tán
+    const total = Math.floor(12 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const isGold = i % 2 === 0;
+      particles.push({
+        x: x + side * 4,
+        y: footY - 1,
+        vx: side * (2.2 + Math.random() * 3.2) * countMult,
+        vy: -0.3 - Math.random() * 0.7,
+        life: 20,
+        maxLife: 20,
+        size: 3.0 + Math.random() * 1.5,
+        color: isGold ? '#f6b93b' : '#ffffff',
+        shape: 'drop',
+        rotation: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 0.2,
+        gravity: 0.02,
+        alpha: 0.95,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 15,
+      maxLife: 15,
+      size: 6.5 * countMult,
+      color: '#f6b93b',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.9,
+    });
+  } else if (skinId === 'zombie') {
+    // Sóng axit xanh neon dạt sàn kèm vòng độc dịch chói lọi
+    const total = Math.floor(12 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * 5,
+        y: footY - 1,
+        vx: side * (2.4 + Math.random() * 3.4) * countMult,
+        vy: -0.3 - Math.random() * 0.6,
+        life: 20,
+        maxLife: 20,
+        size: 3.8 + Math.random() * 2.5,
+        color: i % 2 === 0 ? '#55efc4' : '#00cec9',
+        shape: 'smoke',
+        gravity: -0.02,
+        alpha: 0.85,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 16,
+      maxLife: 16,
+      size: 7.0 * countMult,
+      color: '#00cec9',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.95,
+    });
+  } else if (skinId === 'clown') {
+    // Kèn bóp "Bí bo!", vòng sóng sắc màu rực rỡ & bóng nảy tưng bừng
+    const clownColors = ['#ff7675', '#ffd32a', '#00cec9', '#a29bfe', '#ff9f43', '#ffffff'];
+    const total = Math.floor(16 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * 4,
+        y: footY,
+        vx: side * (2.4 + Math.random() * 3.5) * countMult,
+        vy: -0.7 - Math.random() * 1.8,
+        life: 20,
+        maxLife: 20,
+        size: 3.2 + Math.random() * 2.2,
+        color: clownColors[i % clownColors.length],
+        shape: i % 2 === 0 ? 'circle' : 'star',
+        rotation: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 0.3,
+        gravity: 0.1,
+        alpha: 0.95,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 16,
+      maxLife: 16,
+      size: 7.5 * countMult,
+      color: '#ff7675',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.9,
+    });
+  } else if (skinId === 'cyborg') {
+    // Sóng xung kích ma trận kỹ thuật số EMP chấn động mặt sàn
+    const total = Math.floor(16 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const isCyan = i % 2 === 0;
+      particles.push({
+        x: x + side * 5,
+        y: footY,
+        vx: side * (2.8 + Math.random() * 4.0) * countMult,
+        vy: -0.6 - Math.random() * 1.5,
+        life: 20,
+        maxLife: 20,
+        size: 3.5 + Math.random() * 2.2,
+        color: isCyan ? '#00f2fe' : '#ff007f',
+        shape: 'square',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.2,
+        gravity: 0.05,
+        alpha: 0.95,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 18,
+      maxLife: 18,
+      size: 8.5 * countMult,
+      color: '#00f2fe',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
+    // Hồ quang chập điện
+    for (let i = 0; i < 4; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * (4 + Math.random() * 10),
+        y: footY - 1,
+        vx: side * 1.5,
+        vy: -0.4,
+        life: 14,
+        maxLife: 14,
+        size: 4.0,
+        color: '#ff007f',
+        shape: 'lightning',
+        rotation: Math.random() * Math.PI,
+        alpha: 1,
+      });
+    }
+  } else if (skinId === 'thunder') {
+    // Sấm sét rung trời! Sóng điện từ sét nổ tung chạy dọc mặt sàn
+    const total = Math.floor(16 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const isYellow = i % 2 === 0;
+      particles.push({
+        x: x + side * 5,
+        y: footY - 1,
+        vx: side * (3.0 + Math.random() * 4.5) * countMult,
+        vy: -0.5 - Math.random() * 1.2,
+        life: 18,
+        maxLife: 18,
+        size: 5.5 + Math.random() * 3.0,
+        color: isYellow ? '#fff200' : '#00d2d3',
+        shape: 'lightning',
+        rotation: (Math.random() - 0.5) * Math.PI,
+        stroke: true,
+        alpha: 1,
+      });
+    }
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 20,
+      maxLife: 20,
+      size: 9.0 * countMult,
+      color: '#fff200',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
+    for (let i = 0; i < 6; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * (5 + Math.random() * 12),
+        y: footY,
+        vx: side * 1.2,
+        vy: -0.8 - Math.random() * 1.5,
+        life: 16,
+        maxLife: 16,
+        size: 3.5,
+        color: '#ffffff',
+        shape: 'star',
+        gravity: -0.04,
+        alpha: 1,
+      });
+    }
+  } else if (skinId === 'angel') {
+    // Giáng trần uy nghi! Vòng thánh địa rực rỡ, sóng bụi sao kim tuyến
+    const total = Math.floor(18 * countMult);
+    for (let i = 0; i < total; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * 5,
+        y: footY - 1,
+        vx: side * (2.8 + Math.random() * 4.2) * countMult,
+        vy: -0.6 - Math.random() * 1.6,
+        life: 24,
+        maxLife: 24,
+        size: 3.8 + Math.random() * 2.8,
+        color: i % 2 === 0 ? '#f9ca24' : '#fff3cd',
+        shape: 'star',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.12,
+        gravity: 0.04,
+        alpha: 1,
+      });
+    }
+    // Lông vũ thiên thần dạt rộng
+    for (let i = 0; i < 8; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      particles.push({
+        x: x + side * 4,
+        y: footY - 2,
+        vx: side * (1.8 + Math.random() * 2.5) * countMult,
+        vy: -0.4 - Math.random() * 0.8,
+        life: 26,
+        maxLife: 26,
+        size: 3.4,
+        color: '#ffffff',
+        shape: 'drop',
+        rotation: Math.random() * Math.PI,
+        vRot: 0.08,
+        gravity: 0.015,
+        alpha: 1,
+      });
+    }
+    // Vòng hào quang thánh thiện hoàng kim kép
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 22,
+      maxLife: 22,
+      size: 9.5 * countMult,
+      color: '#f9ca24',
+      shape: 'ring',
+      stroke: true,
+      alpha: 1,
+    });
+    particles.push({
+      x,
+      y: footY,
+      vx: 0,
+      vy: 0,
+      life: 20,
+      maxLife: 20,
+      size: 6.5 * countMult,
+      color: '#ffffff',
+      shape: 'ring',
+      stroke: true,
+      alpha: 0.85,
     });
   }
 }
@@ -1055,6 +1922,18 @@ export function renderSkinParticles(
       ctx.lineTo(p.x, p.y - p.size * 1.5);
       ctx.closePath();
       ctx.fill();
+    } else if (p.shape === 'lightning') {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.stroke ? 2.5 : 1.8;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation || 0);
+      ctx.beginPath();
+      ctx.moveTo(0, -p.size);
+      ctx.lineTo(p.size * 0.4, -p.size * 0.3);
+      ctx.lineTo(-p.size * 0.3, 0);
+      ctx.lineTo(p.size * 0.5, p.size * 0.4);
+      ctx.lineTo(0, p.size);
+      ctx.stroke();
     } else {
       // Default: circle
       ctx.fillStyle = p.color;
@@ -1111,6 +1990,23 @@ export function drawPuppetSkin(
     const hue = Math.floor((tick * 3) % 360);
     stringColor = `hsla(${hue}, 100%, 65%, 0.75)`;
     stringWidth = 1.5;
+  } else if (skinId === 'box') {
+    stringColor = 'rgba(225, 177, 44, 0.55)';
+  } else if (skinId === 'chicken') {
+    stringColor = 'rgba(246, 185, 59, 0.65)';
+  } else if (skinId === 'zombie') {
+    stringColor = 'rgba(0, 206, 201, 0.6)';
+  } else if (skinId === 'clown') {
+    stringColor = 'rgba(255, 118, 117, 0.65)';
+  } else if (skinId === 'cyborg') {
+    stringColor = 'rgba(0, 242, 254, 0.8)';
+    stringWidth = 1.3;
+  } else if (skinId === 'thunder') {
+    stringColor = 'rgba(255, 242, 0, 0.85)';
+    stringWidth = 1.4;
+  } else if (skinId === 'angel') {
+    stringColor = 'rgba(249, 202, 36, 0.85)';
+    stringWidth = 1.5;
   }
 
   x.strokeStyle = stringColor;
@@ -1128,9 +2024,11 @@ export function drawPuppetSkin(
   let lineWidth = 3;
 
   if (skinId === 'ninja') {
-    bodyColor = '#2b283a';
+    bodyColor = '#4a446a';
     eyeColor = '#ffffff';
     lineWidth = 3.5;
+    x.shadowBlur = 8;
+    x.shadowColor = 'rgba(255, 71, 87, 0.75)';
   } else if (skinId === 'flame') {
     bodyColor = '#ff6348';
     eyeColor = '#ffeaa7';
@@ -1157,10 +2055,10 @@ export function drawPuppetSkin(
     x.shadowBlur = 10;
     x.shadowColor = '#2ed573';
   } else if (skinId === 'reaper') {
-    bodyColor = '#1e1830';
+    bodyColor = '#3a2b58';
     eyeColor = '#ff3838';
     lineWidth = 3.5;
-    x.shadowBlur = 8;
+    x.shadowBlur = 10;
     x.shadowColor = '#ff3838';
   } else if (skinId === 'troll') {
     const hue = Math.floor((tick * 4) % 360);
@@ -1168,6 +2066,48 @@ export function drawPuppetSkin(
     eyeColor = '#ffffff';
     x.shadowBlur = 10;
     x.shadowColor = bodyColor;
+  } else if (skinId === 'box') {
+    bodyColor = '#e1b12c';
+    eyeColor = '#201b33';
+    lineWidth = 3;
+    x.shadowBlur = 6;
+    x.shadowColor = '#e1b12c';
+  } else if (skinId === 'chicken') {
+    bodyColor = '#ffffff';
+    eyeColor = '#201b33';
+    lineWidth = 3;
+    x.shadowBlur = 8;
+    x.shadowColor = '#f6b93b';
+  } else if (skinId === 'zombie') {
+    bodyColor = '#55efc4';
+    eyeColor = '#ffeaa7';
+    lineWidth = 3.5;
+    x.shadowBlur = 10;
+    x.shadowColor = '#00cec9';
+  } else if (skinId === 'clown') {
+    bodyColor = '#ffffff';
+    eyeColor = '#201b33';
+    lineWidth = 3;
+    x.shadowBlur = 8;
+    x.shadowColor = '#ff7675';
+  } else if (skinId === 'cyborg') {
+    bodyColor = '#dfe6e9';
+    eyeColor = '#00f2fe';
+    lineWidth = 3.5;
+    x.shadowBlur = 11;
+    x.shadowColor = '#00f2fe';
+  } else if (skinId === 'thunder') {
+    bodyColor = '#fff200';
+    eyeColor = '#ffffff';
+    lineWidth = 3.5;
+    x.shadowBlur = 14 + Math.sin(tick * 0.3) * 3;
+    x.shadowColor = '#fed330';
+  } else if (skinId === 'angel') {
+    bodyColor = '#ffffff';
+    eyeColor = '#f9ca24';
+    lineWidth = 3.5;
+    x.shadowBlur = 16;
+    x.shadowColor = '#f6e58d';
   }
 
   x.strokeStyle = bodyColor;
@@ -1175,7 +2115,7 @@ export function drawPuppetSkin(
   x.lineWidth = lineWidth;
   x.lineCap = 'round';
 
-  // Áo choàng sau lưng (cho Golden & Reaper)
+  // Áo choàng sau lưng (cho Golden & Reaper & Angel)
   if (skinId === 'golden') {
     x.strokeStyle = '#8854d0';
     x.lineWidth = 2.5;
@@ -1186,20 +2126,50 @@ export function drawPuppetSkin(
     x.strokeStyle = bodyColor;
     x.lineWidth = lineWidth;
   } else if (skinId === 'reaper') {
-    // Lưỡi hái sau lưng
-    x.strokeStyle = '#574b90';
-    x.lineWidth = 2;
+    // Cán Lưỡi hái sau lưng (tím huyền bí & ánh vàng)
+    x.strokeStyle = '#a55eea';
+    x.lineWidth = 2.2;
     x.beginPath();
     x.moveTo(cx - f * 8, y + 30);
     x.lineTo(cx + f * 5, y + 4);
     x.stroke();
-    // Lưỡi cong
-    x.fillStyle = '#dcdde1';
+    // Lưỡi liềm bạc sáng bóng sắc bén
+    x.strokeStyle = '#ffffff';
+    x.lineWidth = 2;
+    x.fillStyle = '#f1f2f6';
     x.beginPath();
     x.arc(cx + f * 4, y + 5, 8, -Math.PI / 2, 0, f < 0);
     x.stroke();
+    // Ánh đỏ đẫm huyết nguyệt ở chóp lưỡi hái
+    x.fillStyle = '#ff3838';
+    x.beginPath();
+    x.arc(cx + f * 4, y - 3, 2, 0, 7);
+    x.fill();
+
     x.strokeStyle = bodyColor;
     x.fillStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  } else if (skinId === 'angel') {
+    // Đôi cánh thiên thần thánh thiện sau lưng đập nhẹ nhàng
+    const flap = Math.sin(tick * 0.2) * 4;
+    x.fillStyle = '#ffffff';
+    x.strokeStyle = '#f9ca24';
+    x.lineWidth = 1.8;
+    // Cánh sau
+    x.beginPath();
+    x.moveTo(cx - f * 2, y + 16);
+    x.quadraticCurveTo(cx - f * 14, y + 6 + flap, cx - f * 16, y + 18 + flap);
+    x.quadraticCurveTo(cx - f * 10, y + 22, cx - f * 2, y + 22);
+    x.fill();
+    x.stroke();
+    // Cánh trước
+    x.beginPath();
+    x.moveTo(cx - f * 2, y + 17);
+    x.quadraticCurveTo(cx - f * 11, y + 9 + flap, cx - f * 13, y + 23 + flap);
+    x.quadraticCurveTo(cx - f * 6, y + 25, cx - f * 2, y + 22);
+    x.fill();
+    x.stroke();
+    x.strokeStyle = bodyColor;
     x.lineWidth = lineWidth;
   }
 
@@ -1213,11 +2183,100 @@ export function drawPuppetSkin(
   x.moveTo(cx, y + 14);
   x.lineTo(cx, y + 24);
 
-  // Tay
-  x.moveTo(cx, y + 16);
-  x.lineTo(cx + s + o, y + 22 + o);
-  x.moveTo(cx, y + 16);
-  x.lineTo(cx - s - o, y + 22 + o);
+  // Chiếc thùng carton bao bọc thân thể (nếu là skin box)
+  if (skinId === 'box') {
+    x.fillStyle = '#d29b55';
+    x.fillRect(cx - 8, y + 11, 16, 14);
+    x.strokeStyle = '#b7791f';
+    x.lineWidth = 1.6;
+    x.strokeRect(cx - 8, y + 11, 16, 14);
+    // Băng keo dán thùng
+    x.fillStyle = '#f5cd79';
+    x.fillRect(cx - 8, y + 16, 16, 3.5);
+    // Viền mép nắp thùng
+    x.strokeStyle = '#965917';
+    x.lineWidth = 1;
+    x.beginPath();
+    x.moveTo(cx - 8, y + 14);
+    x.lineTo(cx + 8, y + 14);
+    x.stroke();
+    x.strokeStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  }
+
+  // Cánh gà nhỏ trên thân (nếu là chicken)
+  if (skinId === 'chicken') {
+    x.strokeStyle = '#f6b93b';
+    x.lineWidth = 2.2;
+    const wingFlap = Math.sin(tick * 0.3) * 4;
+    x.beginPath();
+    x.moveTo(cx - f * 2, y + 16);
+    x.quadraticCurveTo(cx - f * 8, y + 18 + wingFlap, cx - f * 4, y + 24);
+    x.stroke();
+    x.strokeStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  }
+
+  // Lõi lò phản ứng Cyberpunk trên ngực (nếu là cyborg)
+  if (skinId === 'cyborg') {
+    x.fillStyle = '#ff007f';
+    x.beginPath();
+    x.arc(cx, y + 19, 2.2, 0, Math.PI * 2);
+    x.fill();
+    x.strokeStyle = '#00f2fe';
+    x.lineWidth = 1.2;
+    x.beginPath();
+    x.moveTo(cx, y + 15);
+    x.lineTo(cx, y + 17);
+    x.moveTo(cx, y + 21);
+    x.lineTo(cx, y + 24);
+    x.stroke();
+    x.strokeStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  }
+
+  // Vệt điện trường sấm sét trên ngực (nếu là thunder)
+  if (skinId === 'thunder') {
+    x.strokeStyle = '#00d2d3';
+    x.lineWidth = 1.4;
+    x.beginPath();
+    x.moveTo(cx, y + 16);
+    x.lineTo(cx + Math.sin(tick * 0.5) * 5, y + 20);
+    x.lineTo(cx, y + 24);
+    x.stroke();
+    x.strokeStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  }
+
+  // Dải lụa thiên thần vắt chéo ngực (nếu là angel)
+  if (skinId === 'angel') {
+    x.strokeStyle = '#f9ca24';
+    x.lineWidth = 1.8;
+    x.beginPath();
+    x.moveTo(cx - 3, y + 15);
+    x.lineTo(cx + 3, y + 23);
+    x.stroke();
+    x.strokeStyle = bodyColor;
+    x.lineWidth = lineWidth;
+  }
+
+  // Tay (Zombie duỗi thẳng về phía trước, các skin khác tay vung)
+  if (skinId === 'zombie') {
+    const reach = Math.sin(tick * 0.15) * 2;
+    x.beginPath();
+    x.moveTo(cx, y + 16);
+    x.lineTo(cx + f * 11, y + 15 + reach);
+    x.moveTo(cx, y + 18);
+    x.lineTo(cx + f * 9, y + 19 - reach);
+    x.stroke();
+  } else {
+    x.beginPath();
+    x.moveTo(cx, y + 16);
+    x.lineTo(cx + s + o, y + 22 + o);
+    x.moveTo(cx, y + 16);
+    x.lineTo(cx - s - o, y + 22 + o);
+    x.stroke();
+  }
 
   // Chân (Hồn ma bay lơ lửng bồng bềnh, các skin khác chân đung đưa)
   if (skinId === 'ghost') {
@@ -1244,12 +2303,17 @@ export function drawPuppetSkin(
     x.quadraticCurveTo(cx - f * 6, y + 15 + flutter, cx - f * 11, y + 16 - flutter);
     x.stroke();
 
-    // Băng trán ninja
-    x.strokeStyle = '#747d8c';
-    x.lineWidth = 2;
+    // Băng trán ninja ánh kim loại sáng
+    x.strokeStyle = '#dfe4ea';
+    x.lineWidth = 2.2;
     x.beginPath();
     x.arc(cx, y + 6, 7, -Math.PI * 0.8, -Math.PI * 0.2);
     x.stroke();
+    // Biểu tượng trán kim loại sáng
+    x.fillStyle = '#ffffff';
+    x.beginPath();
+    x.arc(cx, y + 2, 1.2, 0, 7);
+    x.fill();
   } else if (skinId === 'flame') {
     // 3 ngọn lửa nhấp nháy trên đầu
     const f1 = Math.abs(Math.sin(tick * 0.25)) * 4;
@@ -1315,10 +2379,155 @@ export function drawPuppetSkin(
     x.lineTo(cx - f * 2, y + 11);
     x.stroke();
   } else if (skinId === 'reaper') {
-    // Mũ trùm đầu (Hoodie) đen tử thần
-    x.fillStyle = '#110d1c';
+    // Mũ trùm đầu (Hoodie) tím thẫm tử thần
+    x.fillStyle = '#221638';
     x.beginPath();
     x.arc(cx - f * 2, y + 6, 8, 0, 7);
+    x.fill();
+  } else if (skinId === 'box') {
+    // Nắp thùng carton trên đầu & khe nhìn
+    x.fillStyle = '#d29b55';
+    x.fillRect(cx - 7, y + 1, 14, 8);
+    x.strokeStyle = '#b7791f';
+    x.lineWidth = 1.4;
+    x.strokeRect(cx - 7, y + 1, 14, 8);
+    // Băng dính nắp trên
+    x.fillStyle = '#f5cd79';
+    x.fillRect(cx - 7, y + 3, 14, 2);
+    // Khe hé nhìn ra
+    x.fillStyle = '#171224';
+    x.fillRect(cx + f * 1 - 2, y + 4.5, 6, 3);
+  } else if (skinId === 'chicken') {
+    // Mào gà đỏ 3 múi nhấp nhô
+    x.fillStyle = '#ff4757';
+    x.beginPath();
+    x.arc(cx - 2, y, 2.4, 0, Math.PI * 2);
+    x.arc(cx + 1, y - 2, 2.8, 0, Math.PI * 2);
+    x.arc(cx + 4, y, 2.0, 0, Math.PI * 2);
+    x.fill();
+    // Mỏ gà cam nhọn
+    x.fillStyle = '#ff793f';
+    x.beginPath();
+    x.moveTo(cx + f * 6, y + 5);
+    x.lineTo(cx + f * 11, y + 7.5);
+    x.lineTo(cx + f * 6, y + 9.5);
+    x.closePath();
+    x.fill();
+    // Yếm đỏ dưới cằm
+    x.fillStyle = '#ff4757';
+    x.beginPath();
+    x.arc(cx + f * 4, y + 11, 2.0, 0, Math.PI * 2);
+    x.fill();
+  } else if (skinId === 'zombie') {
+    // Vết khâu sẹo chỉ đen trên trán
+    x.strokeStyle = '#2d3436';
+    x.lineWidth = 1.4;
+    x.beginPath();
+    x.moveTo(cx - 3, y + 2);
+    x.lineTo(cx + 3, y + 6);
+    x.stroke();
+    x.beginPath();
+    x.moveTo(cx - 1, y + 2);
+    x.lineTo(cx - 2, y + 4);
+    x.moveTo(cx + 1, y + 4);
+    x.lineTo(cx, y + 6);
+    x.stroke();
+    // Độc dịch xanh chảy ở cằm
+    x.fillStyle = '#00cec9';
+    x.beginPath();
+    x.arc(cx + f * 3, y + 12, 1.6, 0, Math.PI * 2);
+    x.fill();
+  } else if (skinId === 'clown') {
+    // Tóc xù cam 2 bên
+    x.fillStyle = '#ff793f';
+    x.beginPath();
+    x.arc(cx - 7, y + 6, 2.8, 0, Math.PI * 2);
+    x.arc(cx - 6, y + 2, 2.4, 0, Math.PI * 2);
+    x.arc(cx - 7, y + 10, 2.2, 0, Math.PI * 2);
+    x.fill();
+    // Cổ áo xếp ly rạp xiếc (Ruffle collar)
+    x.strokeStyle = '#00d2d3';
+    x.lineWidth = 2.5;
+    x.beginPath();
+    x.arc(cx, y + 14, 5.5, 0, Math.PI);
+    x.stroke();
+    // Mũi tròn đỏ chú hề to tướng phát sáng
+    x.shadowBlur = 8;
+    x.shadowColor = '#ff3838';
+    x.fillStyle = '#ff3838';
+    x.beginPath();
+    x.arc(cx + f * 4.5, y + 7, 3.0, 0, Math.PI * 2);
+    x.fill();
+    // Miệng cười đỏ ngoác
+    x.strokeStyle = '#ff3838';
+    x.lineWidth = 1.5;
+    x.beginPath();
+    x.arc(cx + f * 2, y + 9.5, 3.2, 0.1 * Math.PI, 0.8 * Math.PI);
+    x.stroke();
+  } else if (skinId === 'cyborg') {
+    // Mặt nạ kim loại nửa mặt
+    x.fillStyle = '#747d8c';
+    x.beginPath();
+    x.arc(cx + f * 2, y + 6, 6, -Math.PI / 2, Math.PI / 2, f < 0);
+    x.fill();
+    // Thanh quét Lazer Neon hồng rực
+    x.strokeStyle = '#ff007f';
+    x.lineWidth = 2.4;
+    x.shadowBlur = 8;
+    x.shadowColor = '#ff007f';
+    x.beginPath();
+    x.moveTo(cx - 2, y + 6);
+    x.lineTo(cx + f * 7, y + 6);
+    x.stroke();
+    // Ăng-ten phát tín hiệu trên đầu
+    x.strokeStyle = '#dfe6e9';
+    x.lineWidth = 1.4;
+    x.beginPath();
+    x.moveTo(cx - f * 2, y + 1);
+    x.lineTo(cx - f * 3, y - 5);
+    x.stroke();
+    x.fillStyle = tick % 10 < 5 ? '#ff007f' : '#00f2fe';
+    x.beginPath();
+    x.arc(cx - f * 3, y - 5, 1.8, 0, Math.PI * 2);
+    x.fill();
+  } else if (skinId === 'thunder') {
+    // Vương miện sấm sét chớp giật nhọn hoắt
+    x.strokeStyle = '#fff200';
+    x.lineWidth = 2.2;
+    x.shadowBlur = 12;
+    x.shadowColor = '#fff200';
+    x.beginPath();
+    x.moveTo(cx - 3, y + 1);
+    x.lineTo(cx - 5, y - 4);
+    x.lineTo(cx - 3, y - 2);
+    x.lineTo(cx - 4, y - 8);
+    x.moveTo(cx + 3, y + 1);
+    x.lineTo(cx + 5, y - 4);
+    x.lineTo(cx + 3, y - 2);
+    x.lineTo(cx + 4, y - 8);
+    x.stroke();
+    // Tia sét hồ quang phóng qua thái dương
+    if (Math.random() > 0.4) {
+      x.strokeStyle = '#00d2d3';
+      x.lineWidth = 1.4;
+      x.beginPath();
+      x.moveTo(cx - f * 6, y + 6);
+      x.lineTo(cx - f * 9, y + 9);
+      x.stroke();
+    }
+  } else if (skinId === 'angel') {
+    // Vòng hào quang (Halo) thiên thần vàng kim lơ lửng trên đầu
+    x.strokeStyle = '#f9ca24';
+    x.lineWidth = 2.2;
+    x.shadowBlur = 12;
+    x.shadowColor = '#f9ca24';
+    x.beginPath();
+    x.ellipse(cx, y - 3, 6.5, 2.2, 0, 0, Math.PI * 2);
+    x.stroke();
+    // Đốm sao sáng trên trán
+    x.fillStyle = '#ffffff';
+    x.beginPath();
+    x.arc(cx, y + 3, 1.2, 0, Math.PI * 2);
     x.fill();
   }
 
@@ -1336,10 +2545,13 @@ export function drawPuppetSkin(
     x.lineTo(ex - 2, ey + 2);
     x.stroke();
   } else if (skinId === 'reaper') {
-    // 2 mắt đỏ phát sáng
+    // 2 mắt đỏ phát sáng rực lửa
+    x.shadowBlur = 6;
+    x.shadowColor = '#ff3838';
+    x.fillStyle = '#ff3838';
     x.beginPath();
-    x.arc(cx + f * 3, y + 6, 1.6, 0, 7);
-    x.arc(cx + f * 1, y + 6, 1.4, 0, 7);
+    x.arc(cx + f * 3, y + 6, 1.8, 0, 7);
+    x.arc(cx + f * 1, y + 6, 1.5, 0, 7);
     x.fill();
   } else if (skinId === 'troll') {
     // Kính râm đen cực ngầu
@@ -1347,6 +2559,65 @@ export function drawPuppetSkin(
     x.fillRect(cx + f * 1 - 2, y + 4, 7, 3.5);
     x.fillStyle = '#ffffff';
     x.fillRect(cx + f * 1 - 1, y + 4.5, 2, 1);
+  } else if (skinId === 'box') {
+    // 2 mắt nhìn lén qua khe thùng
+    x.fillStyle = '#ffffff';
+    x.fillRect(cx + f * 1 - 1, y + 5, 4.5, 2.5);
+    x.fillStyle = '#201b33';
+    x.beginPath();
+    x.arc(cx + f * 2, y + 6.2, 1.2, 0, 7);
+    x.fill();
+  } else if (skinId === 'chicken') {
+    // Mắt tròn gà ngơ ngác
+    x.fillStyle = '#ffffff';
+    x.beginPath();
+    x.arc(cx + f * 2.5, y + 6, 2.4, 0, 7);
+    x.fill();
+    x.fillStyle = '#201b33';
+    x.beginPath();
+    x.arc(cx + f * 3.2, y + 6, 1.3, 0, 7);
+    x.fill();
+  } else if (skinId === 'zombie') {
+    // 1 mắt vàng phát sáng neon, 1 mắt tối sụp
+    x.shadowBlur = 6;
+    x.shadowColor = '#ffeaa7';
+    x.fillStyle = '#ffeaa7';
+    x.beginPath();
+    x.arc(cx + f * 3, y + 5.5, 2.0, 0, 7);
+    x.fill();
+    x.fillStyle = '#201b33';
+    x.beginPath();
+    x.arc(cx + f * 0.5, y + 6.5, 1.2, 0, 7);
+    x.fill();
+  } else if (skinId === 'clown') {
+    // Mắt hề vui nhộn
+    x.fillStyle = '#201b33';
+    x.beginPath();
+    x.arc(cx + f * 2, y + 5.2, 1.6, 0, 7);
+    x.fill();
+  } else if (skinId === 'cyborg') {
+    // Mắt đã có thanh quét Laser hồng rực che phủ
+  } else if (skinId === 'thunder') {
+    // Mắt điện phát sáng trắng xanh triệu volt
+    x.shadowBlur = 8;
+    x.shadowColor = '#00d2d3';
+    x.fillStyle = '#ffffff';
+    x.beginPath();
+    x.arc(cx + f * 3, y + 6, 2.0, 0, 7);
+    x.arc(cx + f * 0.8, y + 6, 1.6, 0, 7);
+    x.fill();
+  } else if (skinId === 'angel') {
+    // Mắt thiên thần vàng óng thánh thiện
+    x.shadowBlur = 6;
+    x.shadowColor = '#f9ca24';
+    x.fillStyle = '#f9ca24';
+    x.beginPath();
+    x.arc(cx + f * 3, y + 6, 1.8, 0, 7);
+    x.fill();
+    x.fillStyle = '#ffffff';
+    x.beginPath();
+    x.arc(cx + f * 3, y + 6, 0.8, 0, 7);
+    x.fill();
   } else {
     // Mắt tròn thông thường
     x.beginPath();

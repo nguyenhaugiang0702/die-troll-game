@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   SKINS,
+  getDbSkins,
   isSkinUnlocked,
   resolveActiveSkinId,
   drawPuppetSkin,
@@ -11,7 +12,9 @@ import {
   spawnSkinLandEffect,
   renderSkinParticles,
   type SkinParticle,
+  type SkinDefinition,
 } from '@/lib/skins';
+import { fetchSkinsFromDb, updatePlayerSkin } from '@/lib/supabase';
 import { sound } from '@/lib/sound';
 
 interface SkinModalProps {
@@ -168,6 +171,20 @@ export default function SkinModal({
   onClose,
 }: SkinModalProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'level' | 'deaths'>('all');
+  const [skinsList, setSkinsList] = useState<SkinDefinition[]>(getDbSkins());
+
+  // Tải danh sách Skins trực tiếp từ Supabase DB
+  useEffect(() => {
+    let isMounted = true;
+    fetchSkinsFromDb().then((dbSkins) => {
+      if (isMounted && dbSkins && dbSkins.length > 0) {
+        setSkinsList(dbSkins);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Đóng bằng phím Escape
   useEffect(() => {
@@ -178,20 +195,22 @@ export default function SkinModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleEquip = (skinId: string) => {
+  const handleEquip = (skin: SkinDefinition) => {
     sound.playClick();
-    onSelectSkin(skinId);
+    const idToUse = skin.uuid || skin.id;
+    onSelectSkin(idToUse);
+    updatePlayerSkin(idToUse, skin.uuid);
   };
 
-  const levelSkins = SKINS.filter((s) => s.type === 'level');
-  const deathSkins = SKINS.filter((s) => s.type === 'deaths');
-  const autoSkin = SKINS.find((s) => s.type === 'auto')!;
+  const levelSkins = skinsList.filter((s) => s.type === 'level');
+  const deathSkins = skinsList.filter((s) => s.type === 'deaths');
+  const autoSkin = skinsList.find((s) => s.type === 'auto' || s.slug === 'auto');
 
   const filteredSkins =
     activeTab === 'all'
-      ? SKINS
+      ? skinsList
       : activeTab === 'level'
-        ? [autoSkin, ...levelSkins]
+        ? (autoSkin ? [autoSkin, ...levelSkins] : levelSkins)
         : deathSkins;
 
   return (
@@ -225,21 +244,21 @@ export default function SkinModal({
             className={`skin-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            Tất cả ({SKINS.length})
+            Tất cả ({skinsList.length})
           </button>
           <button
             type="button"
             className={`skin-tab-btn ${activeTab === 'level' ? 'active' : ''}`}
             onClick={() => setActiveTab('level')}
           >
-            🎯 Theo Màn (5)
+            🎯 Theo Màn ({levelSkins.length})
           </button>
           <button
             type="button"
             className={`skin-tab-btn ${activeTab === 'deaths' ? 'active' : ''}`}
             onClick={() => setActiveTab('deaths')}
           >
-            💀 Theo Số Lần Chết (4)
+            💀 Theo Số Lần Chết ({deathSkins.length})
           </button>
         </div>
 
@@ -247,7 +266,10 @@ export default function SkinModal({
         <div className="skin-grid-container">
           {filteredSkins.map((skin) => {
             const unlocked = isSkinUnlocked(skin, currentLevel, totalDeaths);
-            const isEquipped = selectedSkinId === skin.id;
+            const isEquipped =
+              selectedSkinId === skin.id ||
+              Boolean(skin.uuid && selectedSkinId === skin.uuid) ||
+              selectedSkinId === skin.slug;
 
             // Tính tiến độ mở khóa nếu chưa mở
             let progressText = '';
@@ -270,7 +292,7 @@ export default function SkinModal({
                 className={`skin-card ${isEquipped ? 'equipped' : ''} ${!unlocked ? 'locked' : ''}`}
               >
                 <SkinMiniPreview
-                  skinId={skin.id}
+                  skinId={skin.slug || skin.id}
                   levelNumber={currentLevel}
                   isEquipped={isEquipped}
                 />
@@ -280,7 +302,7 @@ export default function SkinModal({
                     <span className="skin-card-name">
                       {skin.icon} {skin.name}
                     </span>
-                    {skin.id === 'auto' && (
+                    {(skin.slug === 'auto' || skin.id === 'auto') && (
                       <span className="skin-badge-auto">Tự đổi màn</span>
                     )}
                   </div>
@@ -325,7 +347,7 @@ export default function SkinModal({
                         <button
                           type="button"
                           className="btn-skin-equip"
-                          onClick={() => handleEquip(skin.id)}
+                          onClick={() => handleEquip(skin)}
                         >
                           Trang bị
                         </button>

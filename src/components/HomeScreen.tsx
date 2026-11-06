@@ -10,6 +10,8 @@ import {
   AVATAR_LIST,
   DEFAULT_AVATAR,
   restoreAccountById,
+  updatePlayerSkin,
+  fetchSkinsFromDb,
   type PlayerProfile,
 } from '@/lib/supabase';
 import LeaderboardModal from './LeaderboardModal';
@@ -45,11 +47,13 @@ export default function HomeScreen({
 
   useEffect(() => {
     setSelectedSkinState(getSelectedSkin());
+    fetchSkinsFromDb();
   }, []);
 
   const handleSelectSkin = (skinId: string) => {
     setSelectedSkin(skinId);
     setSelectedSkinState(skinId);
+    updatePlayerSkin(skinId);
   };
 
   // Sao chép ID & Khôi phục ID
