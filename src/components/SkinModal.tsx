@@ -152,12 +152,7 @@ function SkinMiniPreview({
         height={74}
         className="skin-mini-canvas"
         style={{
-          width: 84,
-          height: 74,
-          borderRadius: '10px',
           border: isEquipped ? '1.5px solid #f5c542' : '1.5px solid #3d3463',
-          background: '#171224',
-          flexShrink: 0,
         }}
       />
       <span className="skin-preview-hint">Chạy · Nhảy · Đáp</span>
@@ -204,7 +199,6 @@ export default function SkinModal({
       <div
         className="modal-card modal-card-skins"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 680, width: 'min(96vw, 680px)' }}
       >
         <div className="lb-modal-header">
           <div className="lb-modal-title-row">
@@ -344,7 +338,7 @@ export default function SkinModal({
           })}
         </div>
 
-        <div className="lb-modal-footer" style={{ marginTop: '14px' }}>
+        <div className="lb-modal-footer">
           <button className="btn-secondary lb-btn-close" onClick={onClose}>
             Đóng
           </button>
