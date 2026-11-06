@@ -449,10 +449,57 @@ export default function GameCanvas({
       }
     };
 
+    // Khóa cử chỉ zoom và cuộn màn hình khi đang chơi game trên mobile
+    const preventPinchZoom = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    let lastTap = 0;
+    const preventDoubleTapZoom = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastTap < 320) {
+        e.preventDefault();
+      }
+      lastTap = now;
+    };
+
+    const preventGesture = (e: Event) => {
+      e.preventDefault();
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
+    const preventTouchMove = (e: TouchEvent) => {
+      // Chỉ chặn cuộn nếu không phải bên trong modal cuộn
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('.modal-card, .skin-grid-container, .lb-table-container, .modal-overlay')) {
+        return;
+      }
+      e.preventDefault();
+    };
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
     window.addEventListener('beforeunload', onBeforeUnload);
+
+    window.addEventListener('touchstart', preventPinchZoom, { passive: false });
+    window.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+    window.addEventListener('touchmove', preventTouchMove, { passive: false });
+    window.addEventListener('wheel', onWheel, { passive: false });
+    document.addEventListener('gesturestart', preventGesture as any);
+    document.addEventListener('gesturechange', preventGesture as any);
+    document.addEventListener('gestureend', preventGesture as any);
 
     return () => {
       engine.destroy();
@@ -460,6 +507,14 @@ export default function GameCanvas({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('beforeunload', onBeforeUnload);
+
+      window.removeEventListener('touchstart', preventPinchZoom);
+      window.removeEventListener('touchend', preventDoubleTapZoom);
+      window.removeEventListener('touchmove', preventTouchMove);
+      window.removeEventListener('wheel', onWheel);
+      document.removeEventListener('gesturestart', preventGesture as any);
+      document.removeEventListener('gesturechange', preventGesture as any);
+      document.removeEventListener('gestureend', preventGesture as any);
     };
   }, [handleSave, initialLevel, initialDeaths, initialPlayTime]);
 
@@ -576,19 +631,21 @@ export default function GameCanvas({
       )}
 
       {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        id="c"
-        width={800}
-        height={450}
-        className="game-canvas"
-        onPointerDown={() => {
-          if (engineRef.current?.st === 'win') {
-            engineRef.current.restart();
-            handleSave(0, 0, 0, true);
-          }
-        }}
-      />
+      <div className="canvas-wrap">
+        <canvas
+          ref={canvasRef}
+          id="c"
+          width={800}
+          height={450}
+          className="game-canvas"
+          onPointerDown={() => {
+            if (engineRef.current?.st === 'win') {
+              engineRef.current.restart();
+              handleSave(0, 0, 0, true);
+            }
+          }}
+        />
+      </div>
 
       <p className="hint">
         ← → hoặc A D: di chuyển · Space, W hoặc ↑: nhảy · R: chơi lại màn

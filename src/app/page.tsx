@@ -60,10 +60,16 @@ export default function Home() {
     })();
   }, [refreshProfile]);
 
-  // Ở màn chơi: bật CSS xoay ngang dự phòng (khi trình duyệt không khóa được hướng)
+  // Ở màn chơi: bật CSS xoay ngang và khóa màn hình chống zoom / cuộn
   useEffect(() => {
-    document.documentElement.classList.toggle('force-landscape', screen === 'game');
-    return () => document.documentElement.classList.remove('force-landscape');
+    const isGame = screen === 'game';
+    document.documentElement.classList.toggle('force-landscape', isGame);
+    document.documentElement.classList.toggle('in-game', isGame);
+    document.body.classList.toggle('in-game', isGame);
+    return () => {
+      document.documentElement.classList.remove('force-landscape', 'in-game');
+      document.body.classList.remove('in-game');
+    };
   }, [screen]);
 
   const handleStartGame = (level: number, deaths: number, playTime: number, name: string) => {
@@ -97,7 +103,7 @@ export default function Home() {
   }
 
   return (
-    <main className="w-full flex flex-col items-center justify-center">
+    <main className={`page-main ${screen === 'game' ? 'page-main-game' : 'page-main-home'}`}>
       {screen === 'home' ? (
         <HomeScreen
           profile={profile}
