@@ -191,8 +191,8 @@ export default function SkinModal({
     activeTab === 'all'
       ? SKINS
       : activeTab === 'level'
-      ? [autoSkin, ...levelSkins]
-      : deathSkins;
+        ? [autoSkin, ...levelSkins]
+        : deathSkins;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
