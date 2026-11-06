@@ -354,9 +354,16 @@ function createGameEngine(
     get st() { return st; },
     get skin() { return currentSkin; },
     setSkin(newSkin: string) { currentSkin = newSkin; },
-    pressKey(k: string) { keys[k] = 1; },
+    pressKey(k: string) {
+      if (k === 'r' || k === 'R') {
+        die();
+        return;
+      }
+      keys[k] = 1;
+    },
     releaseKey(k: string) { delete keys[k]; },
     clearKeys() { keys = {}; },
+    die() { die(); },
     restart() { lv = 0; deaths = 0; playTime = 0; load(); },
     restartFrom(level: number, savedDeaths: number, savedPlayTime = 0) {
       lv = Math.max(0, Math.min(level - 1, LV.length - 1));
@@ -424,6 +431,69 @@ export default function GameCanvas({
     [updateSync]
   );
 
+  // Mobile pad controls: quản lý điều hướng mượt mà, hỗ trợ vuốt ngón tay liên tục giữa Trái/Phải
+  const grpRef = useRef<HTMLDivElement>(null);
+  const btnLeftRef = useRef<HTMLButtonElement>(null);
+  const btnRightRef = useRef<HTMLButtonElement>(null);
+  const activeDirRef = useRef<'ArrowLeft' | 'ArrowRight' | null>(null);
+  const [activeDir, setActiveDir] = useState<'ArrowLeft' | 'ArrowRight' | null>(null);
+  const [isJumping, setIsJumping] = useState(false);
+
+  const setDirection = useCallback((dir: 'ArrowLeft' | 'ArrowRight' | null) => {
+    if (activeDirRef.current === dir) return;
+    const prev = activeDirRef.current;
+    if (prev) {
+      engineRef.current?.releaseKey(prev);
+    }
+    if (dir) {
+      engineRef.current?.pressKey(dir);
+    }
+    activeDirRef.current = dir;
+    setActiveDir(dir);
+  }, []);
+
+  const handlePadTouch = useCallback((clientX: number, clientY: number) => {
+    // 1. Kiểm tra trực tiếp phần tử dưới tọa độ chạm (hoạt động chính xác trên cả màn hình xoay 90° lẫn không xoay)
+    if (typeof document !== 'undefined') {
+      const el = document.elementFromPoint(clientX, clientY);
+      const dir = el?.closest('button[data-dir]')?.getAttribute('data-dir');
+      if (dir === 'ArrowLeft' || dir === 'ArrowRight') {
+        setDirection(dir);
+        return;
+      }
+    }
+
+    // 2. Nếu chạm ở khoảng giữa 2 nút hoặc hơi chệch ra ngoài: tính khoảng cách tới tâm 2 nút
+    const leftEl = btnLeftRef.current;
+    const rightEl = btnRightRef.current;
+    if (!leftEl || !rightEl) return;
+
+    const rL = leftEl.getBoundingClientRect();
+    const rR = rightEl.getBoundingClientRect();
+
+    const cLx = (rL.left + rL.right) / 2;
+    const cLy = (rL.top + rL.bottom) / 2;
+    const cRx = (rR.left + rR.right) / 2;
+    const cRy = (rR.top + rR.bottom) / 2;
+
+    const distL = (clientX - cLx) ** 2 + (clientY - cLy) ** 2;
+    const distR = (clientX - cRx) ** 2 + (clientY - cRy) ** 2;
+
+    const centerDist = Math.hypot(cRx - cLx, cRy - cLy);
+    const maxRadius = Math.max(centerDist * 1.8, 85);
+
+    if (distL > maxRadius ** 2 && distR > maxRadius ** 2) {
+      setDirection(null);
+      return;
+    }
+
+    if (distL < distR) {
+      setDirection('ArrowLeft');
+    } else {
+      setDirection('ArrowRight');
+    }
+  }, [setDirection]);
+
   // Khởi chạy game engine tại đúng initialLevel, initialDeaths và initialPlayTime
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -459,13 +529,35 @@ export default function GameCanvas({
       }
     };
     const onKeyUp = (e: KeyboardEvent) => engine.releaseKey(e.key);
-    const onBlur = () => engine.clearKeys();
+    const onBlur = () => {
+      engine.clearKeys();
+      setDirection(null);
+      setIsJumping(false);
+    };
 
     // Lưu tiến trình thời gian thực khi F5 hoặc đóng tab
     const onBeforeUnload = () => {
       if (engine && getPlayerName()) {
         savePlayerProgress(engine.lv, engine.deaths, engine.playTime, true);
       }
+    };
+
+    // Ngăn chặn menu ngữ cảnh (Copy, Tra cứu...) khi nhấn giữ lâu trên mobile
+    const preventContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    // Ngăn chặn bôi đen văn bản khi chơi game
+    const preventSelectStart = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+      e.preventDefault();
     };
 
     // Khóa cử chỉ zoom và cuộn màn hình khi đang chơi game trên mobile
@@ -512,6 +604,9 @@ export default function GameCanvas({
     window.addEventListener('blur', onBlur);
     window.addEventListener('beforeunload', onBeforeUnload);
 
+    window.addEventListener('contextmenu', preventContextMenu);
+    window.addEventListener('selectstart', preventSelectStart);
+
     window.addEventListener('touchstart', preventPinchZoom, { passive: false });
     window.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
     window.addEventListener('touchmove', preventTouchMove, { passive: false });
@@ -527,6 +622,9 @@ export default function GameCanvas({
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('beforeunload', onBeforeUnload);
 
+      window.removeEventListener('contextmenu', preventContextMenu);
+      window.removeEventListener('selectstart', preventSelectStart);
+
       window.removeEventListener('touchstart', preventPinchZoom);
       window.removeEventListener('touchend', preventDoubleTapZoom);
       window.removeEventListener('touchmove', preventTouchMove);
@@ -535,11 +633,7 @@ export default function GameCanvas({
       document.removeEventListener('gesturechange', preventGesture as any);
       document.removeEventListener('gestureend', preventGesture as any);
     };
-  }, [handleSave, initialLevel, initialDeaths, initialPlayTime]);
-
-  // Mobile pad
-  const padPress = useCallback((k: string) => engineRef.current?.pressKey(k), []);
-  const padRelease = useCallback((k: string) => engineRef.current?.releaseKey(k), []);
+  }, [handleSave, initialLevel, initialDeaths, initialPlayTime, setDirection]);
 
   // Chơi lại từ đầu: đưa tiến trình về màn 1, 0 lần chết, 0 giây và lưu lại
   const handleRestartAll = () => {
@@ -677,56 +771,119 @@ export default function GameCanvas({
       </div>
 
       {/* Mobile pad */}
-      <div id="pad" onContextMenu={(e) => e.preventDefault()}>
-        <div className="grp">
-          {['ArrowLeft', 'ArrowRight'].map((k) => (
-            <button
-              key={k}
-              type="button"
-              draggable={false}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                try {
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                } catch {}
-                padPress(k);
-              }}
-              onPointerUp={() => padRelease(k)}
-              onPointerLeave={() => padRelease(k)}
-              onPointerCancel={() => padRelease(k)}
-              onLostPointerCapture={() => padRelease(k)}
-              aria-label={k === 'ArrowLeft' ? 'Sang trái' : 'Sang phải'}
-            >
-              <span
-                className={`pad-arrow ${k === 'ArrowLeft' ? 'pad-arrow-left' : 'pad-arrow-right'}`}
-                aria-hidden="true"
-              />
-            </button>
-          ))}
-        </div>
-        <div className="pad-center-group">
-        <button id="rs" type="button" aria-label="Chơi lại màn" onClick={() => engineRef.current?.pressKey('r')}>
-          <span className="pad-restart" aria-hidden="true" />
-        </button>
-          <SoundButton className="mobile-sound-btn" size="sm" />
-        </div>
-        <button
-          type="button"
-          className="jump"
-          aria-label="Nhảy"
+      <div id="pad" onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+        <div
+          ref={grpRef}
+          className="grp"
           draggable={false}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => {
             e.preventDefault();
             try {
               e.currentTarget.setPointerCapture(e.pointerId);
             } catch {}
             sound.unlockAudio();
-            padPress('ArrowUp');
+            handlePadTouch(e.clientX, e.clientY);
           }}
-          onPointerUp={() => padRelease('ArrowUp')}
-          onPointerLeave={() => padRelease('ArrowUp')}
-          onPointerCancel={() => padRelease('ArrowUp')}
-          onLostPointerCapture={() => padRelease('ArrowUp')}
+          onPointerMove={(e) => {
+            if (activeDirRef.current || e.buttons > 0) {
+              e.preventDefault();
+              handlePadTouch(e.clientX, e.clientY);
+            }
+          }}
+          onPointerUp={(e) => {
+            e.preventDefault();
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {}
+            setDirection(null);
+          }}
+          onPointerCancel={() => setDirection(null)}
+          onLostPointerCapture={() => setDirection(null)}
+        >
+          <button
+            ref={btnLeftRef}
+            type="button"
+            data-dir="ArrowLeft"
+            className={activeDir === 'ArrowLeft' ? 'on' : ''}
+            draggable={false}
+            tabIndex={-1}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              sound.unlockAudio();
+              setDirection('ArrowLeft');
+            }}
+            aria-label="Sang trái"
+          >
+            <span className="pad-arrow pad-arrow-left" aria-hidden="true" />
+          </button>
+          <button
+            ref={btnRightRef}
+            type="button"
+            data-dir="ArrowRight"
+            className={activeDir === 'ArrowRight' ? 'on' : ''}
+            draggable={false}
+            tabIndex={-1}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              sound.unlockAudio();
+              setDirection('ArrowRight');
+            }}
+            aria-label="Sang phải"
+          >
+            <span className="pad-arrow pad-arrow-right" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="pad-center-group">
+          <button
+            id="rs"
+            type="button"
+            aria-label="Chơi lại màn"
+            draggable={false}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={() => {
+              engineRef.current?.die();
+            }}
+          >
+            <span className="pad-restart" aria-hidden="true" />
+          </button>
+          <SoundButton className="mobile-sound-btn" size="sm" />
+        </div>
+
+        <button
+          type="button"
+          className={`jump ${isJumping ? 'on' : ''}`}
+          aria-label="Nhảy"
+          draggable={false}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {}
+            sound.unlockAudio();
+            setIsJumping(true);
+            engineRef.current?.pressKey('ArrowUp');
+          }}
+          onPointerUp={(e) => {
+            e.preventDefault();
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {}
+            setIsJumping(false);
+            engineRef.current?.releaseKey('ArrowUp');
+          }}
+          onPointerCancel={() => {
+            setIsJumping(false);
+            engineRef.current?.releaseKey('ArrowUp');
+          }}
+          onLostPointerCapture={() => {
+            setIsJumping(false);
+            engineRef.current?.releaseKey('ArrowUp');
+          }}
         >
           <span className="pad-jump-label">Nhảy</span>
         </button>
