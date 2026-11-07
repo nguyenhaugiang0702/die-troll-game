@@ -316,6 +316,14 @@ function createGameEngine(
     x.fillText(`⏱ ${formatPlayTime(Math.floor(playTime))}  ·  Số lần chết: ${deaths}`, W - 16, 28);
     x.textAlign = 'center'; x.globalAlpha = .65; x.font = `400 15px ${FONT}`; x.fillText(L.h, W / 2, 60); x.globalAlpha = 1;
     if (st === 'dead') { x.font = `700 32px ${FONT}`; x.fillText(msg, W / 2, H / 2); }
+    if (paused && st === 'play') {
+      x.fillStyle = 'rgba(10, 8, 20, 0.45)';
+      x.fillRect(0, 0, W, H);
+      x.fillStyle = '#f5c542';
+      x.font = `700 22px ${FONT}`;
+      x.textAlign = 'center';
+      x.fillText('⏸ ĐANG TẠM DỪNG', W / 2, H / 2);
+    }
     if (st === 'win') {
       x.fillStyle = 'rgba(10,8,20,.88)'; x.fillRect(0, 0, W, H); x.fillStyle = '#f5c542';
       x.font = `700 30px ${FONT}`; x.fillText(`Bạn đã vượt qua cả ${LV.length} màn!`, W / 2, 175);
@@ -347,8 +355,18 @@ function createGameEngine(
   load();
   let last = 0, acc = 0, rafId = 0;
   let lastTime = performance.now();
+  let paused = false;
 
   function loop(t: number) {
+    if (paused) {
+      lastTime = t;
+      last = t;
+      acc = 0;
+      draw();
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
+
     tick++;
     const dt = Math.min((t - lastTime) / 1000, 0.1);
     lastTime = t;
@@ -369,8 +387,21 @@ function createGameEngine(
     get playTime() { return Math.floor(playTime); },
     get st() { return st; },
     get skin() { return currentSkin; },
+    get paused() { return paused; },
+    setPaused(p: boolean) {
+      if (paused === p) return;
+      paused = p;
+      if (p) {
+        keys = {};
+      } else {
+        lastTime = performance.now();
+        last = performance.now();
+        acc = 0;
+      }
+    },
     setSkin(newSkin: string) { currentSkin = newSkin; },
     pressKey(k: string) {
+      if (paused) return;
       if (k === 'r' || k === 'R') {
         die();
         return;
@@ -379,7 +410,10 @@ function createGameEngine(
     },
     releaseKey(k: string) { delete keys[k]; },
     clearKeys() { keys = {}; },
-    die() { die(); },
+    die() {
+      if (paused) return;
+      die();
+    },
     restart() { lv = 0; deaths = 0; playTime = 0; load(); },
     restartFrom(level: number, savedDeaths: number, savedPlayTime = 0) {
       lv = Math.max(0, Math.min(level - 1, LV.length - 1));
@@ -429,6 +463,17 @@ export default function GameCanvas({
     return () => clearTimeout(timer);
   }, [skinToast]);
 
+  const isPaused = showLeaderboard || showSkinModal || showNameModal || showRestartConfirm;
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    engineRef.current.setPaused(isPaused);
+    if (isPaused) {
+      setDirection(null);
+      setIsJumping(false);
+    }
+  }, [isPaused]);
+
   useEffect(() => {
     setCurrentSkin(getSelectedSkin());
     fetchSkinsFromDb();
@@ -469,6 +514,11 @@ export default function GameCanvas({
   const [isJumping, setIsJumping] = useState(false);
 
   const setDirection = useCallback((dir: 'ArrowLeft' | 'ArrowRight' | null) => {
+    if (engineRef.current?.paused) {
+      activeDirRef.current = null;
+      setActiveDir(null);
+      return;
+    }
     if (activeDirRef.current === dir) return;
     const prev = activeDirRef.current;
     if (prev) {
@@ -559,6 +609,7 @@ export default function GameCanvas({
 
     // Keyboard events
     const onKeyDown = (e: KeyboardEvent) => {
+      if (engine.paused) return;
       if (e.target && ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
       if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       engine.pressKey(e.key);
@@ -567,7 +618,10 @@ export default function GameCanvas({
         handleSave(0, 0, 0, true);
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => engine.releaseKey(e.key);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (engine.paused) return;
+      engine.releaseKey(e.key);
+    };
     const onBlur = () => {
       engine.clearKeys();
       setDirection(null);
@@ -740,6 +794,11 @@ export default function GameCanvas({
             <span className="status-tag" style={{ color: syncColor[syncStatus.type] || '#adb5bd' }}>
               {syncStatus.text}
             </span>
+            {isPaused && (
+              <span className="status-tag" style={{ color: '#f5c542', background: 'rgba(245, 197, 66, 0.15)', borderColor: 'rgba(245, 197, 66, 0.4)' }}>
+                ⏸ Tạm dừng
+              </span>
+            )}
           </div>
         </div>
 
@@ -897,6 +956,7 @@ export default function GameCanvas({
             draggable={false}
             onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={() => {
+              if (engineRef.current?.paused) return;
               engineRef.current?.die();
             }}
           >
@@ -913,6 +973,7 @@ export default function GameCanvas({
           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => {
             e.preventDefault();
+            if (engineRef.current?.paused) return;
             try {
               e.currentTarget.setPointerCapture(e.pointerId);
             } catch { }
