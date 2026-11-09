@@ -8,6 +8,8 @@ import {
   setPlayerAvatar,
   savePlayerProgress,
   registerOrFindPlayer,
+  checkNameAvailability,
+  getPlayerId,
   formatPlayTime,
   AVATAR_LIST,
   DEFAULT_AVATAR,
@@ -446,6 +448,7 @@ export default function GameCanvas({
   });
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [nameModalError, setNameModalError] = useState('');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
   const [errorToast, setErrorToast] = useState<string | null>(null);
@@ -738,21 +741,43 @@ export default function GameCanvas({
   const handleSaveName = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed) {
-      setErrorToast('Vui lòng nhập tên!');
+      setNameModalError('Vui lòng nhập tên người chơi!');
       return;
     }
-    const res = await registerOrFindPlayer(trimmed, selectedAvatar);
-    setPlayerName(res.name);
-    setPlayerNameState(res.name);
-    setPlayerAvatar(res.avatar);
-    setPlayerAvatarState(res.avatar);
-    setShowNameModal(false);
-    handleSave(
-      engineRef.current?.lv ?? 0,
-      engineRef.current?.deaths ?? 0,
-      engineRef.current?.playTime ?? 0,
-      true
-    );
+    if (trimmed.length > 20) {
+      setNameModalError('Tên không được vượt quá 20 ký tự!');
+      return;
+    }
+
+    try {
+      setNameModalError('');
+      const currentId = getPlayerId();
+      const check = await checkNameAvailability(trimmed, currentId);
+      if (!check.isAvailable) {
+        const suggestion = check.suggestedName || trimmed;
+        setNameInput(suggestion);
+        setNameModalError(
+          `Tên "${trimmed}" đã có người sử dụng. Hệ thống gợi ý: "${suggestion}". Nhấn "Lưu hồ sơ" lần nữa để xác nhận!`
+        );
+        return;
+      }
+
+      const res = await registerOrFindPlayer(trimmed, selectedAvatar);
+      setPlayerName(res.name);
+      setPlayerNameState(res.name);
+      setPlayerAvatar(res.avatar);
+      setPlayerAvatarState(res.avatar);
+      setShowNameModal(false);
+      handleSave(
+        engineRef.current?.lv ?? 0,
+        engineRef.current?.deaths ?? 0,
+        engineRef.current?.playTime ?? 0,
+        true
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Có lỗi khi lưu hồ sơ.';
+      setNameModalError(msg);
+    }
   };
 
   const syncColor: Record<string, string> = {
@@ -783,6 +808,7 @@ export default function GameCanvas({
               onClick={() => {
                 setNameInput(playerName);
                 setSelectedAvatar(playerAvatar);
+                setNameModalError('');
                 setShowNameModal(true);
               }}
               title="Nhấn để đổi tên & avatar"
@@ -1040,10 +1066,36 @@ export default function GameCanvas({
               placeholder="Ví dụ: Rối Tí Nị..."
               maxLength={20}
               value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
+              onChange={(e) => {
+                setNameInput(e.target.value);
+                if (nameModalError) setNameModalError('');
+              }}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
               autoFocus
             />
+
+            {nameModalError && (
+              <div
+                style={{
+                  backgroundColor: nameModalError.includes('gợi ý')
+                    ? 'rgba(255, 179, 0, 0.12)'
+                    : 'rgba(255, 107, 107, 0.12)',
+                  border: `1px solid ${
+                    nameModalError.includes('gợi ý') ? 'rgba(255, 179, 0, 0.45)' : 'rgba(255, 107, 107, 0.45)'
+                  }`,
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  margin: '-6px 0 12px 0',
+                  fontSize: '13px',
+                  lineHeight: '1.4',
+                  color: nameModalError.includes('gợi ý') ? '#ffc048' : '#ff6b6b',
+                  textAlign: 'center',
+                }}
+              >
+                {nameModalError.includes('gợi ý') ? '💡 ' : '❌ '}
+                {nameModalError}
+              </div>
+            )}
             <div className="modal-buttons">
               <button className="btn-secondary" onClick={() => setShowNameModal(false)}>
                 Hủy

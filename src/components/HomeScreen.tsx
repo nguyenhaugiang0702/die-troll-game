@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   registerOrFindPlayer,
+  checkNameAvailability,
   clearPlayerSession,
   verifyLocalWithServer,
   syncLocalWithServer,
@@ -198,10 +199,23 @@ export default function HomeScreen({
       return;
     }
 
-    void enterLandscape();
     try {
       setIsSubmitting(true);
       setNameError('');
+
+      // Kiểm tra trùng tên với hệ thống
+      const check = await checkNameAvailability(trimmed);
+      if (!check.isAvailable) {
+        const suggestion = check.suggestedName || trimmed;
+        setNameInput(suggestion);
+        setNameError(
+          `Tên "${trimmed}" đã có người sử dụng. Hệ thống đã gợi ý: "${suggestion}". Nhấn "Vào Chơi" lần nữa để xác nhận hoặc sửa tiếp!`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      void enterLandscape();
       const saved = await registerOrFindPlayer(trimmed, selectedAvatar);
       await onRefreshProfile();
       setShowNameModal(false);
@@ -230,9 +244,27 @@ export default function HomeScreen({
     try {
       setIsSubmitting(true);
       setNameError('');
+
+      // Kiểm tra trùng tên (loại trừ chính player hiện tại)
+      const check = await checkNameAvailability(trimmed, profile.id);
+      if (!check.isAvailable) {
+        const suggestion = check.suggestedName || trimmed;
+        setNameInput(suggestion);
+        setNameError(
+          `Tên "${trimmed}" đã có người sử dụng. Hệ thống đã gợi ý: "${suggestion}". Nhấn "Lưu hồ sơ" lần nữa để xác nhận hoặc sửa tiếp!`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       await registerOrFindPlayer(trimmed, selectedAvatar);
       await onRefreshProfile();
       setShowEditModal(false);
+      setToastData({
+        type: 'success',
+        title: 'Cập nhật thành công!',
+        message: `Hồ sơ của bạn đã được cập nhật: ${trimmed}.`,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu.';
       setNameError(msg);
@@ -525,9 +557,26 @@ export default function HomeScreen({
             />
 
             {nameError && (
-              <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-8px 0 12px 0', textAlign: 'center' }}>
-                ❌ {nameError}
-              </p>
+              <div
+                style={{
+                  backgroundColor: nameError.includes('gợi ý')
+                    ? 'rgba(255, 179, 0, 0.12)'
+                    : 'rgba(255, 107, 107, 0.12)',
+                  border: `1px solid ${
+                    nameError.includes('gợi ý') ? 'rgba(255, 179, 0, 0.45)' : 'rgba(255, 107, 107, 0.45)'
+                  }`,
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  margin: '-6px 0 12px 0',
+                  fontSize: '13px',
+                  lineHeight: '1.4',
+                  color: nameError.includes('gợi ý') ? '#ffc048' : '#ff6b6b',
+                  textAlign: 'center',
+                }}
+              >
+                {nameError.includes('gợi ý') ? '💡 ' : '❌ '}
+                {nameError}
+              </div>
             )}
 
             {/* Chuyển sang khôi phục bằng ID */}
@@ -615,9 +664,26 @@ export default function HomeScreen({
             />
 
             {nameError && (
-              <p style={{ color: '#ff6b6b', fontSize: '13px', margin: '-8px 0 12px 0', textAlign: 'center' }}>
-                ❌ {nameError}
-              </p>
+              <div
+                style={{
+                  backgroundColor: nameError.includes('gợi ý')
+                    ? 'rgba(255, 179, 0, 0.12)'
+                    : 'rgba(255, 107, 107, 0.12)',
+                  border: `1px solid ${
+                    nameError.includes('gợi ý') ? 'rgba(255, 179, 0, 0.45)' : 'rgba(255, 107, 107, 0.45)'
+                  }`,
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  margin: '-6px 0 12px 0',
+                  fontSize: '13px',
+                  lineHeight: '1.4',
+                  color: nameError.includes('gợi ý') ? '#ffc048' : '#ff6b6b',
+                  textAlign: 'center',
+                }}
+              >
+                {nameError.includes('gợi ý') ? '💡 ' : '❌ '}
+                {nameError}
+              </div>
             )}
 
             {/* Mã ID người chơi đầy đủ */}
