@@ -329,6 +329,22 @@ BEGIN
     ) THEN
       NEW.equipped_skin_id := v_new_level_skin_id;
     END IF;
+  -- C. Kiểm tra an toàn: Nếu người chơi đang chọn một skin cụ thể nhưng chưa mở khóa
+  -- (ví dụ: can thiệp sửa localStorage / API trực tiếp) -> Tự động đưa về skin hợp lệ
+  ELSIF (NEW.equipped_skin_id IS NOT NULL AND NEW.equipped_skin_id <> v_auto_skin_id) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.skins s
+      WHERE s.id = NEW.equipped_skin_id
+        AND (
+          s.name = 'auto'
+          OR s.unlock_type = 'auto'
+          OR s.unlock_type = 'free'
+          OR (s.unlock_type = 'level' AND NEW.level >= s.req_value)
+          OR (s.unlock_type = 'deaths' AND NEW.deaths >= s.req_value)
+        )
+    ) THEN
+      NEW.equipped_skin_id := COALESCE(v_new_level_skin_id, v_auto_skin_id);
+    END IF;
   END IF;
 
   RETURN NEW;

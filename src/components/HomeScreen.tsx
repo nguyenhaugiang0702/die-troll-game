@@ -47,9 +47,9 @@ export default function HomeScreen({
   const [selectedSkin, setSelectedSkinState] = useState('auto');
 
   useEffect(() => {
-    setSelectedSkinState(getSelectedSkin());
+    setSelectedSkinState(getSelectedSkin(profile.level, profile.deaths));
     fetchSkinsFromDb();
-  }, []);
+  }, [profile.level, profile.deaths]);
 
   const handleSelectSkin = (skinId: string) => {
     setSelectedSkin(skinId);

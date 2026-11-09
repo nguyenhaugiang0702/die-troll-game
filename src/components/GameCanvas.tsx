@@ -202,7 +202,7 @@ function createGameEngine(
       if (e.ft > 0 && --e.ft === 0) e.g = 1;
     });
     L.T.forEach((t: any) => { if (!t.d && pl.x + 8 > t.a && pl.x + 8 < t.b) { t.d = 1; t.f(); } });
-    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1);
+    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1, undefined, deaths, true);
 
     let m = (keys.ArrowRight || keys.d || keys.D ? 1 : 0) - (keys.ArrowLeft || keys.a || keys.A ? 1 : 0);
     if (L.rev) m = -m;
@@ -339,7 +339,7 @@ function createGameEngine(
 
   function puppet() {
     const cx = pl.x + 8, y = pl.y, s = Math.sin(pl.ph) * (pl.g ? 6 : 3), o = pl.g ? 0 : -4;
-    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1);
+    const activeSkin = resolveActiveSkinId(currentSkin, lv + 1, undefined, deaths, true);
     let scaleX = 1;
     let scaleY = 1;
     if (landTimer > 0) {
@@ -478,9 +478,9 @@ export default function GameCanvas({
   }, [isPaused]);
 
   useEffect(() => {
-    setCurrentSkin(getSelectedSkin());
+    setCurrentSkin(getSelectedSkin(initialLevel, initialDeaths));
     fetchSkinsFromDb();
-  }, []);
+  }, [initialLevel, initialDeaths]);
 
   const handleSelectSkin = (skinId: string) => {
     setSelectedSkin(skinId);
@@ -601,7 +601,7 @@ export default function GameCanvas({
       initialLevel,
       initialDeaths,
       initialPlayTime,
-      getSelectedSkin()
+      getSelectedSkin(initialLevel, initialDeaths)
     );
     engineRef.current = engine;
 

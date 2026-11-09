@@ -554,7 +554,8 @@ export async function savePlayerProgress(
       level: targetLevel,
       deaths,
       play_time: targetPlayTime,
-      equipped_skin_id: resolveSkinUuid(getSelectedSkin()) || getSelectedSkin(),
+      equipped_skin_id:
+        resolveSkinUuid(getSelectedSkin(targetLevel, deaths)) || getSelectedSkin(targetLevel, deaths),
       updated_at: new Date().toISOString(),
     };
 

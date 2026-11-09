@@ -90,10 +90,24 @@ export function getDbSkins(): SkinDefinition[] {
   return dbSkinsCache.length > 0 ? dbSkinsCache : SKINS;
 }
 
-// Lấy skin đang lưu trong localStorage
-export function getSelectedSkin(): string {
+// Lấy skin đang lưu trong localStorage (kèm kiểm duyệt mở khóa nếu truyền level/deaths)
+export function getSelectedSkin(currentLevel?: number, totalDeaths?: number): string {
   if (typeof localStorage === 'undefined') return 'auto';
-  return localStorage.getItem('puppet_selected_skin') || 'auto';
+  const saved = localStorage.getItem('puppet_selected_skin') || 'auto';
+  if (!saved || saved === 'auto') return 'auto';
+
+  // Nếu có thông tin màn chơi / số lần chết để đối soát
+  if (typeof currentLevel === 'number') {
+    const deaths = typeof totalDeaths === 'number' ? totalDeaths : 0;
+    const found = findSkinByIdentifier(getDbSkins(), saved);
+    if (found && !isSkinUnlocked(found, currentLevel, deaths)) {
+      // Skin bị khóa nhưng lại nằm trong localStorage -> can thiệp trái phép, reset về auto
+      localStorage.setItem('puppet_selected_skin', 'auto');
+      return 'auto';
+    }
+  }
+
+  return saved;
 }
 
 // Lưu skin được chọn
@@ -154,7 +168,15 @@ export function resolveSkinUuid(
 
 // Kiểm tra một skin đã được mở khóa chưa
 export function isSkinUnlocked(skin: SkinDefinition, currentLevel: number, totalDeaths: number): boolean {
-  if (skin.type === 'auto' || skin.type === 'free') return true;
+  if (!skin) return true;
+  if (
+    skin.type === 'auto' ||
+    skin.type === 'free' ||
+    skin.slug === 'auto' ||
+    skin.id === 'auto'
+  ) {
+    return true;
+  }
   if (skin.type === 'level') {
     return (currentLevel || 1) >= (skin.reqValue || 1);
   }
@@ -164,21 +186,12 @@ export function isSkinUnlocked(skin: SkinDefinition, currentLevel: number, total
   return false;
 }
 
-// Xác định skin thực tế hiển thị khi chơi dựa trên dữ liệu DB (nếu là 'auto' thì tự đổi theo màn từ DB)
-export function resolveActiveSkinId(
-  selectedSkinId: string,
+// Tự động tìm skin phù hợp với chặng màn chơi hiện tại
+export function resolveAutoLevelSkin(
   levelNumber: number,
   skinsList: SkinDefinition[] = getDbSkins()
 ): string {
   const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
-  const found = findSkinByIdentifier(list, selectedSkinId);
-  const slug = found ? (found.slug || found.id) : resolveSkinSlug(selectedSkinId, list);
-
-  if (slug && slug !== 'auto') {
-    return slug;
-  }
-
-  // Tự động theo màn dựa trên danh sách skin từ DB
   const lv = Math.max(1, levelNumber || 1);
   const levelSkins = list
     .filter((s) => s.type === 'level' && typeof s.reqValue === 'number')
@@ -196,6 +209,37 @@ export function resolveActiveSkinId(
   if (lv <= 30) return 'flame';
   if (lv <= 40) return 'frost';
   return 'golden';
+}
+
+// Xác định skin thực tế hiển thị khi chơi dựa trên dữ liệu DB (kèm kiểm duyệt chống gian lận)
+export function resolveActiveSkinId(
+  selectedSkinId: string,
+  levelNumber: number,
+  skinsList: SkinDefinition[] = getDbSkins(),
+  totalDeaths?: number,
+  validateUnlock = false
+): string {
+  const list = skinsList && skinsList.length > 0 ? skinsList : getDbSkins();
+  const found = findSkinByIdentifier(list, selectedSkinId);
+  const slug = found ? (found.slug || found.id) : resolveSkinSlug(selectedSkinId, list);
+
+  if (slug && slug !== 'auto') {
+    // Nếu yêu cầu kiểm duyệt tính hợp lệ (chống sửa localStorage trái phép)
+    if (validateUnlock) {
+      const deaths = typeof totalDeaths === 'number' ? totalDeaths : 0;
+      const unlocked = found ? isSkinUnlocked(found, levelNumber, deaths) : false;
+      if (!unlocked) {
+        // Tự động xóa giá trị gian lận trong localStorage về 'auto'
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('puppet_selected_skin') === selectedSkinId) {
+          localStorage.setItem('puppet_selected_skin', 'auto');
+        }
+        return resolveAutoLevelSkin(levelNumber, list);
+      }
+    }
+    return slug;
+  }
+
+  return resolveAutoLevelSkin(levelNumber, list);
 }
 
 // Tự động tìm skin phù hợp với mốc màn chơi (level)
