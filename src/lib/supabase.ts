@@ -796,7 +796,7 @@ export async function fetchLeaderboard(): Promise<
       .order('level', { ascending: false })
       .order('deaths', { ascending: true })
       .order('play_time', { ascending: true })
-      .limit(30);
+      .limit(100);
 
     if (error) throw error;
     return { data: (data || []) as Player[] };
