@@ -329,6 +329,22 @@ BEGIN
     ) THEN
       NEW.equipped_skin_id := v_new_level_skin_id;
     END IF;
+  -- C. Kiểm tra an toàn: Nếu người chơi đang chọn một skin cụ thể nhưng chưa mở khóa
+  -- (ví dụ: can thiệp sửa localStorage / API trực tiếp) -> Tự động đưa về skin hợp lệ
+  ELSIF (NEW.equipped_skin_id IS NOT NULL AND NEW.equipped_skin_id <> v_auto_skin_id) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.skins s
+      WHERE s.id = NEW.equipped_skin_id
+        AND (
+          s.name = 'auto'
+          OR s.unlock_type = 'auto'
+          OR s.unlock_type = 'free'
+          OR (s.unlock_type = 'level' AND NEW.level >= s.req_value)
+          OR (s.unlock_type = 'deaths' AND NEW.deaths >= s.req_value)
+        )
+    ) THEN
+      NEW.equipped_skin_id := COALESCE(v_new_level_skin_id, v_auto_skin_id);
+    END IF;
   END IF;
 
   RETURN NEW;
@@ -340,3 +356,57 @@ CREATE TRIGGER trg_auto_unlock_player_skins
 BEFORE INSERT OR UPDATE OF level, deaths, equipped_skin_id ON public.players
 FOR EACH ROW
 EXECUTE FUNCTION public.auto_unlock_player_skins();
+
+-- ------------------------------------------------------------------------------
+-- 7. BẢO VỆ CHỐNG GIAN LẬN TIẾN TRÌNH & CHỐNG TRÙNG TÊN (DATABASE SECURITY)
+-- ------------------------------------------------------------------------------
+
+-- 7.1. Chống trùng tên không phân biệt hoa thường (Unique Case-Insensitive Index)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_players_unique_name ON public.players (LOWER(TRIM(name)));
+
+-- 7.2. Trigger kiểm soát tính toàn vẹn (Anti-Cheat Progress Guard)
+CREATE OR REPLACE FUNCTION public.validate_player_progress_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- 1. Chuẩn hóa tên (xóa khoảng trắng thừa)
+  NEW.name := TRIM(NEW.name);
+
+  -- 2. Giới hạn level tối đa là 50 màn, tối thiểu màn 1
+  IF NEW.level > 50 THEN
+    NEW.level := 50;
+  ELSIF NEW.level < 1 THEN
+    NEW.level := 1;
+  END IF;
+
+  -- 3. Số lần chết và thời gian chơi không được âm
+  IF NEW.deaths < 0 THEN
+    NEW.deaths := 0;
+  END IF;
+  IF NEW.play_time < 0 THEN
+    NEW.play_time := 0;
+  END IF;
+
+  -- 4. Chống hack nhảy cóc màn chơi:
+  -- Trong 1 lần update, người chơi chỉ được qua tối đa 1 màn (NEW.level <= OLD.level + 1).
+  -- Ngoại lệ: Nếu người chơi bấm "Chơi lại từ đầu" thì level quay về 1 (NEW.level = 1).
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.level > OLD.level + 1 AND NEW.level <> 1 THEN
+      -- Chặn bước nhảy bất thường, đưa về mức tối đa cho phép
+      NEW.level := OLD.level + 1;
+    END IF;
+
+    -- Không cho phép giảm thời gian chơi (trừ khi chơi lại từ đầu level = 1)
+    IF NEW.level > 1 AND NEW.play_time < OLD.play_time THEN
+      NEW.play_time := OLD.play_time;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_validate_player_progress ON public.players;
+CREATE TRIGGER trg_validate_player_progress
+BEFORE INSERT OR UPDATE OF name, level, deaths, play_time ON public.players
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_player_progress_update();

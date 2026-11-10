@@ -216,7 +216,111 @@ export function clearPlayerSession(): void {
   }
 }
 
-// ─── Đăng ký hoặc khôi phục người chơi (Auto-gen ID & Avatar) ─────────────────
+// ─── Kiểm tra trùng tên & Tạo tên gợi ý khả dụng ────────────────────────────
+
+export interface NameCheckResult {
+  isAvailable: boolean;
+  suggestedName?: string;
+  message?: string;
+}
+
+export async function checkNameAvailability(
+  name: string,
+  excludePlayerId?: string
+): Promise<NameCheckResult> {
+  const trimmed = (name || '').trim();
+  if (!trimmed) {
+    return {
+      isAvailable: false,
+      suggestedName: '',
+      message: 'Vui lòng nhập tên người chơi!',
+    };
+  }
+
+  if (trimmed.length > 20) {
+    return {
+      isAvailable: false,
+      suggestedName: trimmed.slice(0, 20),
+      message: 'Tên không được vượt quá 20 ký tự!',
+    };
+  }
+
+  try {
+    // 1. Kiểm tra chính xác tên (không phân biệt hoa/thường)
+    let query = supabase
+      .from('players')
+      .select('id, name')
+      .ilike('name', trimmed);
+
+    if (excludePlayerId) {
+      query = query.neq('id', excludePlayerId);
+    }
+
+    const { data: exactMatches, error } = await query;
+    if (error) {
+      console.warn('[Supabase] Lỗi khi kiểm tra trùng tên:', error.message);
+      return { isAvailable: true };
+    }
+
+    // Nếu tên chưa ai dùng (ngoại trừ excludePlayerId)
+    if (!exactMatches || exactMatches.length === 0) {
+      return { isAvailable: true };
+    }
+
+    // 2. Tên đã tồn tại! Tính toán tên gợi ý khả dụng (suggestedName)
+    // Tách phần chữ gốc và số đuôi nếu có (ví dụ "Rối 1" -> base "Rối", num 1)
+    const match = trimmed.match(/^(.*?)(?:[ _](\d+))?$/);
+    const baseName = (match ? match[1] : trimmed).trim();
+    const startNum = match && match[2] ? parseInt(match[2], 10) + 1 : 2;
+
+    // Tìm tất cả các tên tương tự bắt đầu bằng baseName
+    const { data: similar } = await supabase
+      .from('players')
+      .select('name')
+      .ilike('name', `${baseName}%`)
+      .limit(100);
+
+    const takenSet = new Set<string>();
+    takenSet.add(trimmed.toLowerCase());
+    (similar || []).forEach((row) => {
+      if (row.name) takenSet.add(row.name.trim().toLowerCase());
+    });
+
+    // Tìm số tiếp theo chưa bị trùng
+    let suggested = '';
+    for (let n = startNum; n <= startNum + 100; n++) {
+      const suffix = ` ${n}`;
+      let candidateBase = baseName;
+      if (candidateBase.length + suffix.length > 20) {
+        candidateBase = candidateBase.slice(0, 20 - suffix.length).trim();
+      }
+      const candidate = `${candidateBase}${suffix}`;
+      if (!takenSet.has(candidate.toLowerCase())) {
+        suggested = candidate;
+        break;
+      }
+    }
+
+    // Nếu vẫn chưa tìm được, dùng số ngẫu nhiên
+    if (!suggested) {
+      const rand = Math.floor(10 + Math.random() * 90);
+      const suffix = `_${rand}`;
+      const candidateBase = baseName.slice(0, Math.max(1, 20 - suffix.length)).trim();
+      suggested = `${candidateBase}${suffix}`;
+    }
+
+    return {
+      isAvailable: false,
+      suggestedName: suggested,
+      message: `Tên "${trimmed}" đã có người sử dụng. Hệ thống gợi ý tên: "${suggested}".`,
+    };
+  } catch (err) {
+    console.warn('[Supabase] Exception khi kiểm tra trùng tên:', err);
+    return { isAvailable: true };
+  }
+}
+
+// ─── Đăng ký hoặc cập nhật người chơi (Auto-gen ID & Avatar) ─────────────────
 
 export async function registerOrFindPlayer(
   name: string,
@@ -269,40 +373,8 @@ export async function registerOrFindPlayer(
     }
   }
 
-  // 2. Nếu chưa có ID trên máy này, kiểm tra xem tên đã có sẵn trong bảng players chưa
-  try {
-    const { data: existing, error } = await supabase
-      .from('players')
-      .select('*')
-      .ilike('name', trimmed)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existing && !error) {
-      const timeVal = existing.play_time || 0;
-      const currentAvatar = existing.avatar || avatar || DEFAULT_AVATAR;
-      setPlayerId(existing.id);
-      if (existing.equipped_skin_id) {
-        setSelectedSkin(existing.equipped_skin_id);
-      }
-      setLocalProgress(existing.level || 1, existing.deaths || 0, timeVal, currentAvatar);
-      return {
-        id: String(existing.id),
-        name: existing.name,
-        avatar: currentAvatar,
-        level: existing.level || 1,
-        deaths: existing.deaths || 0,
-        playTime: timeVal,
-        hasPlayed: true,
-        equipped_skin_id: existing.equipped_skin_id,
-      };
-    }
-  } catch (e) {
-    console.warn('[Supabase] Lỗi tìm theo tên:', e);
-  }
-
-  // 3. Người chơi mới: Không gửi id, để Supabase tự sinh (auto-gen)
+  // 2. Người chơi mới: Không tự động lấy ID của người khác để tránh chiếm đoạt tài khoản!
+  // Tạo bản ghi mới an toàn với ID tự sinh
   const currentSkin = getSelectedSkin();
   const skinUuid = resolveSkinUuid(currentSkin);
   const newPayload = {
@@ -482,7 +554,8 @@ export async function savePlayerProgress(
       level: targetLevel,
       deaths,
       play_time: targetPlayTime,
-      equipped_skin_id: resolveSkinUuid(getSelectedSkin()) || getSelectedSkin(),
+      equipped_skin_id:
+        resolveSkinUuid(getSelectedSkin(targetLevel, deaths)) || getSelectedSkin(targetLevel, deaths),
       updated_at: new Date().toISOString(),
     };
 
